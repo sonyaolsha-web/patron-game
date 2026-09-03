@@ -53,7 +53,7 @@ function create() {
 
     // 3. Патрон
     patron = this.add.image(120, 330, 'patron').setOrigin(0.5, 0.5);
-    patron.setScale(0.29);
+    patron.setScale(0.30);
 
     // Групи фізичних об'єктів
     arrows = this.physics.add.group();
@@ -120,7 +120,7 @@ function shootArrow(pointer) {
 function spawnZombie() {
     let y = Phaser.Math.Between(450, 650);
     let zombie = zombies.create(1320, y, 'zombie');
-    zombie.setScale(0.45);
+    zombie.setScale(0.5);
     zombie.setVelocityX(-80);
 }
 
