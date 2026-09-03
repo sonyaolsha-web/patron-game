@@ -82,9 +82,11 @@ function create() {
         { key: 'invincible', weight: 6  }
     ];
 
-    // 3. Запуск музики при першому кліку/тапі по екрану
-    this.input.once('pointerdown', () => {
-        if (!currentTrack || !currentTrack.isPlaying) {
+   this.input.once('pointerdown', () => {
+        if (this.sound.context.state === 'suspended') {
+            this.sound.context.resume();
+        }
+       if (!currentTrack || !currentTrack.isPlaying) {
             playWeightedTrack.call(this);
         }
     });
