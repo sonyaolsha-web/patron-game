@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Пес Патрон проти Зомбі</title>
+    <title>Пес Патрон VS Пригожин</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
@@ -15,11 +15,11 @@
 <script>
 const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
+        width: 1280,
+        height: 720
     },
     physics: {
         default: 'arcade',
@@ -54,7 +54,7 @@ function create() {
 
     // 3. Ставимо Патрона на вежу
     patron = this.add.image(100, 280, 'patron').setOrigin(0.3, 0.5);
-    patron.setScale(0.5);
+    patron.setScale(0.25);
 
     // Групи для стріл і зомбі
     arrows = this.physics.add.group();
@@ -100,7 +100,7 @@ function update() {
 
 function shootArrow(pointer) {
     let arrow = arrows.create(patron.x, patron.y, 'arrow');
-    arrow.setScale(0.5);
+    arrow.setScale(0.15);
     
     let angle = Phaser.Math.Angle.Between(patron.x, patron.y, pointer.x, pointer.y);
     arrow.rotation = angle;
@@ -111,7 +111,7 @@ function shootArrow(pointer) {
 function spawnZombie() {
     let y = Phaser.Math.Between(350, 550);
     let zombie = zombies.create(850, y, 'zombie');
-    zombie.setScale(0.5);
+    zombie.setScale(0.3);
     zombie.setVelocityX(-80);
 }
 
