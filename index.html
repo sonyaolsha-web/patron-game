@@ -64,7 +64,7 @@ function create() {
     tower.setScale(0.8);
 
     patron = this.add.image(120, 330, 'patron').setOrigin(0.5, 0.5);
-    patron.setScale(0.25);
+    patron.setScale(0.30);
 
     arrows = this.physics.add.group();
     zombies = this.physics.add.group();
@@ -166,7 +166,7 @@ function shootArrow(pointer) {
 function spawnZombie() {
     let y = Phaser.Math.Between(450, 650);
     let zombie = zombies.create(1320, y, 'zombie');
-    zombie.setScale(0.3);
+    zombie.setScale(0.65);
     zombie.setVelocityX(-80);
 }
 
