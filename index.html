@@ -34,35 +34,62 @@ let patron, arrows, zombies, scoreText;
 let score = 0;
 let lastFired = 0;
 
+// Змінні для звукової системи
+let currentTrack = null;
+let tracksList = [];
+
 function preload() {
+    // Картинки
     this.load.image('background', 'assets/background.png');
     this.load.image('tower', 'assets/tower.png');
     this.load.image('patron', 'assets/patron.png');
     this.load.image('arrow', 'assets/arrow.png');
     this.load.image('zombie', 'assets/zombie.png');
+
+    // Аудіофайли
+    this.load.audio('music_main', 'assets/music_main.mp3');
+    this.load.audio('stefania', 'assets/stefania.mp3');
+    this.load.audio('donbass', 'assets/donbass.mp3');
+    this.load.audio('sorry', 'assets/sorry.mp3');
+    this.load.audio('wagners', 'assets/wagners.mp3');
+    this.load.audio('invincible', 'assets/invincible.mp3');
 }
 
 function create() {
-    // 1. Фон
+    // 1. Графіка
     let bg = this.add.image(640, 360, 'background');
     bg.setDisplaySize(1280, 720);
 
-    // 2. Вежа
     let tower = this.add.image(120, 520, 'tower');
     tower.setScale(0.8);
 
-    // 3. Патрон
     patron = this.add.image(120, 330, 'patron').setOrigin(0.5, 0.5);
-    patron.setScale(0.30);
+    patron.setScale(0.25);
 
-    // Групи фізичних об'єктів
     arrows = this.physics.add.group();
     zombies = this.physics.add.group();
 
-    // Очки
     scoreText = this.add.text(24, 24, 'Очки: 0', { fontSize: '32px', fill: '#fff' });
 
-    // Стрільба
+    // 2. Налаштування шансiв (weight) для кожного треку
+    // Загальна сума ваги = 100. music_main має вагу 70 (70% шанс випадання)
+    tracksList = [
+        { key: 'music_main', weight: 70 }, // Найчастіше (IMG_0843)
+        { key: 'stefania',   weight: 6  },
+        { key: 'donbass',    weight: 6  },
+        { key: 'sorry',      weight: 6  },
+        { key: 'wagners',    weight: 6  },
+        { key: 'invincible', weight: 6  }
+    ];
+
+    // 3. Запуск музики при першому кліку/тапі по екрану
+    this.input.once('pointerdown', () => {
+        if (!currentTrack || !currentTrack.isPlaying) {
+            playWeightedTrack.call(this);
+        }
+    });
+
+    // Постріли
     this.input.on('pointerdown', (pointer) => {
         let time = this.time.now;
         if (time > lastFired) {
@@ -71,7 +98,7 @@ function create() {
         }
     });
 
-    // Поява ворогів
+    // Спавн зомбі
     this.time.addEvent({
         delay: 1500,
         callback: spawnZombie,
@@ -79,17 +106,14 @@ function create() {
         loop: true
     });
 
-    // Зіткнення стріл та зомбі
     this.physics.add.overlap(arrows, zombies, hitZombie, null, this);
 }
 
 function update() {
-    // Поворот Патрона до курсора
     let pointer = this.input.activePointer;
     let angle = Phaser.Math.Angle.Between(patron.x, patron.y, pointer.x, pointer.y);
     patron.rotation = angle;
 
-    // Безопечне очищення стріл за межами екрана
     arrows.children.each((arrow) => {
         if (arrow && arrow.active) {
             if (arrow.x > 1300 || arrow.y > 750 || arrow.y < -50 || arrow.x < -50) {
@@ -98,13 +122,35 @@ function update() {
         }
     });
 
-    // Очищення зомбі, які дійшли до вежі
     zombies.children.each((zombie) => {
         if (zombie && zombie.active && zombie.x < 120) {
             zombie.destroy();
-            // Тут можна додати зменшення життів/Game Over
         }
     });
+}
+
+// Алгоритм вибору та програвання наступного треку
+function playWeightedTrack() {
+    let totalWeight = tracksList.reduce((sum, item) => sum + item.weight, 0);
+    let randomNum = Phaser.Math.Between(1, totalWeight);
+    let selectedKey = tracksList[0].key;
+
+    for (let track of tracksList) {
+        if (randomNum <= track.weight) {
+            selectedKey = track.key;
+            break;
+        }
+        randomNum -= track.weight;
+    }
+
+    currentTrack = this.sound.add(selectedKey, { volume: 0.5 });
+
+    // Коли уривок закінчується — автоматично обирається і грає наступний
+    currentTrack.once('complete', () => {
+        playWeightedTrack.call(this);
+    });
+
+    currentTrack.play();
 }
 
 function shootArrow(pointer) {
@@ -120,7 +166,7 @@ function shootArrow(pointer) {
 function spawnZombie() {
     let y = Phaser.Math.Between(450, 650);
     let zombie = zombies.create(1320, y, 'zombie');
-    zombie.setScale(0.65);
+    zombie.setScale(0.3);
     zombie.setVelocityX(-80);
 }
 
