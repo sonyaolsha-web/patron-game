@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пес Патрон проти Зомбі</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
+        canvas { display: block; margin: 0 auto; }
+    </style>
+</head>
+<body>
+
+<script>
+const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 600,
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    physics: {
+        default: 'arcade',
+        arcade: { debug: false }
+    },
+    scene: { preload: preload, create: create, update: update }
+};
+
+const game = new Phaser.Game(config);
+
+let patron, arrows, zombies, scoreText;
+let score = 0;
+let lastFired = 0;
+
+function preload() {
+    // Завантажуємо картинки з папки assets
+    this.load.image('background', 'assets/background.png');
+    this.load.image('tower', 'assets/tower.png');
+    this.load.image('patron', 'assets/patron.png');
+    this.load.image('arrow', 'assets/arrow.png');
+    this.load.image('zombie', 'assets/zombie.png');
+}
+
+function create() {
+    // 1. Малюємо фон
+    let bg = this.add.image(400, 300, 'background');
+    bg.setDisplaySize(800, 600);
+
+    // 2. Ставимо вежу
+    let tower = this.add.image(100, 450, 'tower');
+    tower.setScale(0.8);
+
+    // 3. Ставимо Патрона на вежу
+    patron = this.add.image(100, 280, 'patron').setOrigin(0.3, 0.5);
+    patron.setScale(0.5);
+
+    // Групи для стріл і зомбі
+    arrows = this.physics.add.group();
+    zombies = this.physics.add.group();
+
+    // Лічильник очок
+    scoreText = this.add.text(16, 16, 'Очки: 0', { fontSize: '28px', fill: '#fff' });
+
+    // Постріл за тапом / кліком
+    this.input.on('pointerdown', (pointer) => {
+        let time = this.time.now;
+        if (time > lastFired) {
+            shootArrow.call(this, pointer);
+            lastFired = time + 400;
+        }
+    });
+
+    // Спавн зомбі
+    this.time.addEvent({
+        delay: 1500,
+        callback: spawnZombie,
+        callbackScope: this,
+        loop: true
+    });
+
+    // Влучання стріли в зомбі
+    this.physics.add.overlap(arrows, zombies, hitZombie, null, this);
+}
+
+function update() {
+    // Повертаємо Патрона за мишкою або тапом
+    let pointer = this.input.activePointer;
+    let angle = Phaser.Math.Angle.Between(patron.x, patron.y, pointer.x, pointer.y);
+    patron.rotation = angle;
+
+    // Видаляємо стріли за межами екрана
+    arrows.children.each((arrow) => {
+        if (arrow && (arrow.x > 800 || arrow.y > 600 || arrow.y < 0)) {
+            arrow.destroy();
+        }
+    });
+}
+
+function shootArrow(pointer) {
+    let arrow = arrows.create(patron.x, patron.y, 'arrow');
+    arrow.setScale(0.5);
+    
+    let angle = Phaser.Math.Angle.Between(patron.x, patron.y, pointer.x, pointer.y);
+    arrow.rotation = angle;
+    
+    this.physics.velocityFromRotation(angle, 600, arrow.body.velocity);
+}
+
+function spawnZombie() {
+    let y = Phaser.Math.Between(350, 550);
+    let zombie = zombies.create(850, y, 'zombie');
+    zombie.setScale(0.5);
+    zombie.setVelocityX(-80);
+}
+
+function hitZombie(arrow, zombie) {
+    arrow.destroy();
+    zombie.destroy();
+    
+    score += 10;
+    scoreText.setText('Очки: ' + score);
+}
+</script>
+
+</body>
+</html>
