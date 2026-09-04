@@ -35,7 +35,6 @@ let patron, arrows, zombies, apples, scoreText;
 let score = 0;
 let lastFired = 0;
 
-// Змінні системи життів та паузи
 let lives = 5;
 let hearts = [];
 let isGameOver = false;
@@ -43,13 +42,12 @@ let isPaused = false;
 let pauseGroup;
 let gameOverText, restartText, zombieSpawnTimer;
 
-// Змінні для звуків
 let currentTrack = null;
 let tracksList = [];
 let pigSound;
+let musicStarted = false;
 
 function preload() {
-    // Графіка та основні аудіо
     this.load.image('background', 'assets/background.png');
     this.load.image('tower', 'assets/tower.png');
     this.load.image('patron', 'assets/patron.png');
@@ -65,6 +63,7 @@ function preload() {
 function create() {
     isGameOver = false;
     isPaused = false;
+    musicStarted = false;
     score = 0;
     lives = 5;
     hearts = [];
@@ -73,11 +72,11 @@ function create() {
     bg.setDisplaySize(1280, 720);
     bg.setDepth(0);
 
-    // Пес Патрон розташований ЗА вежею (depth = 1) та трохи нижче (Y = 275)
+    // Пес Патрон ЗА вежею (depth = 1) та трохи нижче
     patron = this.add.image(195, 275, 'patron').setOrigin(0.5, 0.5);
     patron.setScale(0.30);
     patron.setDepth(1);
-    patron.angle = -15; // Початковий нахил вгору на 15 градусів
+    patron.rotation = -0.26; // Початковий нахил трохи вгору (~15 градусів)
 
     // Вежа поверх Пса Патрона (depth = 2)
     let tower = this.add.image(180, 450, 'tower');
@@ -129,7 +128,7 @@ function create() {
         { key: 'invincible', weight: 6  }
     ];
 
-    // Дозавантаження додаткових треків у фоні
+    // Дозавантаження додаткових треків
     this.load.audio('stefania', 'assets/stefania.mp3');
     this.load.audio('donbass', 'assets/donbass.mp3');
     this.load.audio('sorry', 'assets/sorry.mp3');
@@ -137,11 +136,13 @@ function create() {
     this.load.audio('invincible', 'assets/invincible.mp3');
     this.load.start();
 
+    // Запуск музики СУВОРО після першого кліку
     this.input.once('pointerdown', () => {
-        if (this.sound.context.state === 'suspended') {
-            this.sound.context.resume();
-        }
-        if (!currentTrack || !currentTrack.isPlaying) {
+        if (!musicStarted) {
+            musicStarted = true;
+            if (this.sound.context.state === 'suspended') {
+                this.sound.context.resume();
+            }
             playWeightedTrack.call(this);
         }
     });
@@ -173,9 +174,10 @@ function update() {
     if (isGameOver || isPaused) return;
 
     let pointer = this.input.activePointer;
-    // Обертання з урахуванням вихідного нахилу (-15 градусів)
-    let angle = Phaser.Math.Angle.Between(patron.x, patron.y, pointer.x, pointer.y);
-    patron.rotation = angle - Phaser.Math.DegToRad(15);
+    if (pointer) {
+        let angle = Phaser.Math.Angle.Between(patron.x, patron.y, pointer.x, pointer.y);
+        patron.rotation = angle - 0.26; // Плавний нахил
+    }
 
     arrows.children.each((arrow) => {
         if (arrow && arrow.active) {
@@ -236,7 +238,6 @@ function triggerGameOver() {
         });
     }
 
-    // Покриття Game Over та текст виставлені на високу глибину (depth: 1000)
     let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65);
     overlay.setDepth(1000);
 
@@ -306,7 +307,7 @@ function shootArrow(pointer) {
     this.physics.velocityFromRotation(angle, 600, arrow.body.velocity);
 }
 
-// Хаотичний спавн зомбі по розширеній висоті
+// Стабільна функція спавну зомбі
 function spawnZombie() {
     if (isGameOver || isPaused) return;
     
@@ -315,16 +316,15 @@ function spawnZombie() {
     this.time.delayedCall(delay, () => {
         if (isGameOver || isPaused) return;
 
-        // Розширений хаотичний діапазон по висоті (від 570 до 660)
+        // Хаотична висота (від 570 до 660)
         let groundY = Phaser.Math.Between(570, 660);
         let startX = Phaser.Math.Between(1310, 1370);
 
         let zombie = zombies.create(startX, groundY, 'zombie');
         zombie.setOrigin(0.5, 1);
 
-        // Динамічний depth від 10 до 100 залежно від Y-координати
-        let depthValue = Math.floor(Phaser.Math.MapLinear(groundY, 570, 660, 10, 90));
-        zombie.setDepth(depthValue);
+        // Стабільне задання шару за висотою Y
+        zombie.setDepth(Math.floor(groundY));
 
         let typeRoll = Phaser.Math.Between(1, 100);
         let speed, scale, hp, reward;
