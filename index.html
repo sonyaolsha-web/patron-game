@@ -207,7 +207,6 @@ class GameScene extends Phaser.Scene {
         this.zombies = this.physics.add.group();
         this.apples = this.add.group();
 
-        // Зменшено гучність упевнено до 0.12
         this.pigSound = this.sound.add('pig_sound', { volume: 0.12 });
 
         this.scoreText = this.add.text(40, 40, 'Очки: 0 / 1488', { 
@@ -256,7 +255,7 @@ class GameScene extends Phaser.Scene {
         this.hudBackBtn.on('pointerdown', (p, x, y, e) => { e.stopPropagation(); this.showExitConfirmModal(); });
 
         // --- ЕКРАН ПАУЗИ ---
-        let pauseOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65);
+        let pauseOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65).setInteractive();
         let pauseText = this.add.text(640, 260, 'ПАУЗА', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '44px',
@@ -272,22 +271,37 @@ class GameScene extends Phaser.Scene {
             padding: { x: 20, y: 10 }
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-        this.muteBtn.on('pointerdown', () => {
+        this.muteBtn.on('pointerdown', (p, x, y, e) => {
+            e.stopPropagation();
             this.toggleSound();
         });
 
-        let pauseSubText = this.add.text(640, 450, 'Натисніть SPACE або ESC для продовження', {
+        // Адаптивний текст для сенсора чи ПК
+        let isTouchDevice = this.sys.game.device.input.touch;
+        let hintMsg = isTouchDevice 
+            ? 'Натисніть на екран або [ II ] для продовження' 
+            : 'Натисніть SPACE, ESC або [ II ] для продовження';
+
+        let pauseSubText = this.add.text(640, 450, hintMsg, {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '16px',
-            fill: '#cccccc'
+            fontSize: '15px',
+            fill: '#cccccc',
+            align: 'center'
         }).setOrigin(0.5);
+
+        // Клік по фону меню паузи відновлює гру
+        pauseOverlay.on('pointerdown', () => {
+            if (this.isPaused && !this.exitModalGroup.visible) {
+                this.togglePause();
+            }
+        });
 
         this.pauseGroup = this.add.group([pauseOverlay, pauseText, this.muteBtn, pauseSubText]);
         this.pauseGroup.setDepth(999);
         this.pauseGroup.setVisible(false);
 
         // --- МОДАЛЬНЕ ВІКНО ПІДТВЕРДЖЕННЯ ВИХОДУ ---
-        let exitOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.75);
+        let exitOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.75).setInteractive();
         let exitQuestion = this.add.text(640, 280, 'Ви точно хочете вийти в меню?', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '22px',
@@ -313,14 +327,16 @@ class GameScene extends Phaser.Scene {
 
         yesBtn.on('pointerover', () => yesBtn.setStyle({ fill: '#ffcc00' }));
         yesBtn.on('pointerout', () => yesBtn.setStyle({ fill: '#ffffff' }));
-        yesBtn.on('pointerdown', () => {
+        yesBtn.on('pointerdown', (p, x, y, e) => {
+            e.stopPropagation();
             this.stopAllMusic();
             this.scene.start('MenuScene');
         });
 
         noBtn.on('pointerover', () => noBtn.setStyle({ fill: '#ffcc00' }));
         noBtn.on('pointerout', () => noBtn.setStyle({ fill: '#ffffff' }));
-        noBtn.on('pointerdown', () => {
+        noBtn.on('pointerdown', (p, x, y, e) => {
+            e.stopPropagation();
             this.hideExitConfirmModal();
         });
 
@@ -328,7 +344,6 @@ class GameScene extends Phaser.Scene {
         this.exitModalGroup.setDepth(1000);
         this.exitModalGroup.setVisible(false);
 
-        // Видалено 'invincible' із загального пулу ротації фонової музики
         this.tracksList = ['music_main', 'stefania', 'donbass', 'sorry', 'wagners'];
         this.playRandomTrack();
 
@@ -504,16 +519,13 @@ class GameScene extends Phaser.Scene {
         if (this.zombieSpawnTimer) this.zombieSpawnTimer.remove();
         this.physics.pause();
 
-        // 1. Ставимо поточний трек на паузу
         if (this.currentTrack && this.currentTrack.isPlaying) {
             this.currentTrack.pause();
         }
 
-        // 2. Запускаємо "invincible"
         this.winTrack = this.sound.add('invincible', { volume: 0.7 });
         this.winTrack.play();
 
-        // 3. Після завершення "invincible" продовжуємо попередню пісню
         this.winTrack.once('complete', () => {
             if (this.currentTrack && this.currentTrack.isPaused) {
                 this.currentTrack.resume();
