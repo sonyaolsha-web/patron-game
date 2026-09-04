@@ -117,7 +117,6 @@ function create() {
     pauseGroup.setDepth(999);
     pauseGroup.setVisible(false);
 
-    // Список треків з однакової пріоритетністю
     tracksList = ['music_main', 'stefania', 'donbass', 'sorry', 'wagners', 'invincible'];
 
     this.load.audio('stefania', 'assets/stefania.mp3');
@@ -178,14 +177,12 @@ function update() {
     });
 
     zombies.children.each((zombie) => {
-        // Коли зомбі доходить до вежі (X < 180) і ще не зникає
         if (zombie && zombie.active && zombie.x < 180 && !zombie.isDying) {
-            zombie.isDying = true; // Позначка, щоб анімація не запускалась двічі
-            zombie.setVelocityX(0); // Зупиняємо рух
+            zombie.isDying = true;
+            zombie.setVelocityX(0);
             
             takeDamage.call(this);
 
-            // АНІМАЦІЯ ЗМЕНШЕННЯ ТА ЗНИКНЕННЯ
             this.tweens.add({
                 targets: zombie,
                 scaleX: 0,
@@ -273,7 +270,6 @@ function triggerGameOver() {
     });
 }
 
-// Випадковий вибір пісні з абсолютно однакової ймовірністю
 function playRandomTrack() {
     let randomIndex = Phaser.Math.Between(0, tracksList.length - 1);
     let selectedKey = tracksList[randomIndex];
@@ -312,8 +308,8 @@ function spawnZombie() {
     this.time.delayedCall(delay, () => {
         if (isGameOver || isPaused) return;
 
-        // Діапазон від поточного рівня (570) і ще нижче до низу (680)
-        let groundY = Phaser.Math.Between(570, 680);
+        // Скоригована висота дороги: від 600 (опущено нижче повітря) до 690 (самий низ)
+        let groundY = Phaser.Math.Between(600, 690);
         let startX = Phaser.Math.Between(1310, 1370);
 
         let zombie = zombies.create(startX, groundY, 'zombie');
