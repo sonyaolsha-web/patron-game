@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Пес Патрон VS Пригожин</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <!-- Підключаємо піксельний шрифт "Press Start 2P" з Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
         canvas { display: block; margin: 0 auto; }
@@ -34,6 +36,12 @@ let patron, arrows, zombies, scoreText;
 let score = 0;
 let lastFired = 0;
 
+// Змінні для системи життів та Game Over
+let lives = 5;
+let hearts = [];
+let isGameOver = false;
+let gameOverText, restartText, zombieSpawnTimer;
+
 // Змінні для звукової системи
 let currentTrack = null;
 let tracksList = [];
@@ -45,6 +53,7 @@ function preload() {
     this.load.image('patron', 'assets/patron.png');
     this.load.image('arrow', 'assets/arrow.png');
     this.load.image('zombie', 'assets/zombie.png');
+    this.load.image('heart', 'assets/heart.png'); // Сердечко (поклади heart.png у папку assets/)
 
     // Аудіофайли
     this.load.audio('music_main', 'assets/music_main.mp3');
@@ -56,6 +65,12 @@ function preload() {
 }
 
 function create() {
+    // Скидаємо стан при запуску/рестарті
+    isGameOver = false;
+    score = 0;
+    lives = 5;
+    hearts = [];
+
     // 1. Графіка
     let bg = this.add.image(640, 360, 'background');
     bg.setDisplaySize(1280, 720);
@@ -69,12 +84,23 @@ function create() {
     arrows = this.physics.add.group();
     zombies = this.physics.add.group();
 
-    scoreText = this.add.text(24, 24, 'Очки: 0', { fontSize: '32px', fill: '#fff' });
+    // Очки у піксельному стилі
+    scoreText = this.add.text(24, 24, 'Очки: 0', { 
+        fontFamily: '"Press Start 2P", monospace', 
+        fontSize: '24px', 
+        fill: '#ffffff' 
+    });
 
-    // 2. Налаштування шансiв (weight) для кожного треку
-    // Загальна сума ваги = 100. music_main має вагу 70 (70% шанс випадання)
+    // Відображення 5 сердечок (життів) у правому верхньому кутку
+    for (let i = 0; i < 5; i++) {
+        let heart = this.add.image(1280 - 40 - (i * 45), 40, 'heart');
+        heart.setScale(0.08); // Налаштуй розмір під своє зображення якщо потрібно
+        hearts.push(heart);
+    }
+
+    // 2. Налаштування шансів (weight) для кожного треку
     tracksList = [
-        { key: 'music_main', weight: 70 }, // Найчастіше (IMG_0843)
+        { key: 'music_main', weight: 70 },
         { key: 'stefania',   weight: 6  },
         { key: 'donbass',    weight: 6  },
         { key: 'sorry',      weight: 6  },
@@ -82,17 +108,19 @@ function create() {
         { key: 'invincible', weight: 6  }
     ];
 
-   this.input.once('pointerdown', () => {
+    this.input.once('pointerdown', () => {
         if (this.sound.context.state === 'suspended') {
             this.sound.context.resume();
         }
-       if (!currentTrack || !currentTrack.isPlaying) {
+        if (!currentTrack || !currentTrack.isPlaying) {
             playWeightedTrack.call(this);
         }
     });
 
     // Постріли
     this.input.on('pointerdown', (pointer) => {
+        if (isGameOver) return; // Не стріляємо, якщо Game Over
+        
         let time = this.time.now;
         if (time > lastFired) {
             shootArrow.call(this, pointer);
@@ -101,7 +129,7 @@ function create() {
     });
 
     // Спавн зомбі
-    this.time.addEvent({
+    zombieSpawnTimer = this.time.addEvent({
         delay: 1500,
         callback: spawnZombie,
         callbackScope: this,
@@ -112,6 +140,8 @@ function create() {
 }
 
 function update() {
+    if (isGameOver) return;
+
     let pointer = this.input.activePointer;
     let angle = Phaser.Math.Angle.Between(patron.x, patron.y, pointer.x, pointer.y);
     patron.rotation = angle;
@@ -124,10 +154,59 @@ function update() {
         }
     });
 
+    // Перевірка: якщо зомбі дійшов до Патрона / вежі
     zombies.children.each((zombie) => {
         if (zombie && zombie.active && zombie.x < 120) {
             zombie.destroy();
+            takeDamage.call(this); // Втрата життя
         }
+    });
+}
+
+// Отримання шкоди (зменшення життів)
+function takeDamage() {
+    if (isGameOver) return;
+
+    lives--;
+    if (hearts[lives]) {
+        hearts[lives].setVisible(false); // Ховаємо одне сердечко
+    }
+
+    if (lives <= 0) {
+        triggerGameOver.call(this);
+    }
+}
+
+// Екран Game Over
+function triggerGameOver() {
+    isGameOver = true;
+    
+    if (zombieSpawnTimer) zombieSpawnTimer.remove();
+    this.physics.pause(); // Зупиняємо рух усіх об'єктів
+
+    // Напис "ГРУ ЗАКІНЧЕНО" (піксельний стиль)
+    gameOverText = this.add.text(640, 300, 'ГРУ ЗАКІНЧЕНО', {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: '44px',
+        fill: '#ffffff',
+        align: 'center'
+    }).setOrigin(0.5);
+
+    // Напис "ПОЧАТИ ЗНОВУ" (кнопка)
+    restartText = this.add.text(640, 400, 'ПОЧАТИ ЗНОВУ', {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: '26px',
+        fill: '#ffffff',
+        align: 'center'
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    // Ефект підсвічування при наведенні
+    restartText.on('pointerover', () => restartText.setStyle({ fill: '#ffcc00' }));
+    restartText.on('pointerout', () => restartText.setStyle({ fill: '#ffffff' }));
+
+    // Рестарт гри при кліку
+    restartText.on('pointerdown', () => {
+        this.scene.restart();
     });
 }
 
@@ -147,7 +226,6 @@ function playWeightedTrack() {
 
     currentTrack = this.sound.add(selectedKey, { volume: 0.5 });
 
-    // Коли уривок закінчується — автоматично обирається і грає наступний
     currentTrack.once('complete', () => {
         playWeightedTrack.call(this);
     });
@@ -166,6 +244,7 @@ function shootArrow(pointer) {
 }
 
 function spawnZombie() {
+    if (isGameOver) return;
     let y = Phaser.Math.Between(450, 650);
     let zombie = zombies.create(1320, y, 'zombie');
     zombie.setScale(0.65);
