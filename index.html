@@ -195,13 +195,13 @@ class GameScene extends Phaser.Scene {
         bg.setDepth(0);
 
         // --- ВЕЖА (Масштаб 0.24, посунута вправо до X=130) ---
-        let tower = this.add.image(130, 450, 'tower');
+        let tower = this.add.image(137, 580, 'tower');
         tower.setOrigin(0.5, 1);
         tower.setScale(0.24);
         tower.setDepth(2);
 
         // --- ПЕС ПАТРОН (Розміщений зверху на вежі) ---
-        this.patron = this.add.image(130, 430, 'patron').setOrigin(0.5, 0.5);
+        this.patron = this.add.image(130, 380, 'patron').setOrigin(0.5, 0.5);
         this.patron.setScale(0.24);
         this.patron.setDepth(3);
         this.patron.rotation = -0.26;
