@@ -194,14 +194,14 @@ class GameScene extends Phaser.Scene {
         bg.setDisplaySize(1280, 720);
         bg.setDepth(0);
 
-        // --- ВЕЖА (зменшена ще в 3 рази) ---
-        let tower = this.add.image(80, 640, 'tower');
+        // --- ВЕЖА (збалансований середній розмір) ---
+        let tower = this.add.image(80, 650, 'tower');
         tower.setOrigin(0.5, 1);
-        tower.setScale(0.09);
+        tower.setScale(0.18);
         tower.setDepth(2);
 
-        // --- ПЕС ПАТРОН (гармонійно сидить на вежі) ---
-        this.patron = this.add.image(80, 480, 'patron').setOrigin(0.5, 0.5);
+        // --- ПЕС ПАТРОН (точне розміщення зверху вежі) ---
+        this.patron = this.add.image(80, 490, 'patron').setOrigin(0.5, 0.5);
         this.patron.setScale(0.22);
         this.patron.setDepth(3);
         this.patron.rotation = -0.26;
@@ -389,7 +389,7 @@ class GameScene extends Phaser.Scene {
         });
 
         this.zombies.children.each((zombie) => {
-            if (zombie && zombie.active && zombie.x < 110 && !zombie.isDying) {
+            if (zombie && zombie.active && zombie.x < 115 && !zombie.isDying) {
                 zombie.isDying = true;
                 zombie.setVelocityX(0);
                 
