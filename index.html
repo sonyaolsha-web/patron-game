@@ -17,11 +17,16 @@
         }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;"> <!-- Блокуємо системне меню миші -->
 
 <div class="font-preload">.</div>
 
 <script>
+// Додаткове відключення контекстного меню для всього вікна браузера
+window.addEventListener('contextmenu', function (e) {
+    e.preventDefault();
+}, false);
+
 function createGrainTexture(scene) {
     if (scene.textures.exists('grain_texture')) return;
     
@@ -186,6 +191,9 @@ class GameScene extends Phaser.Scene {
         this.currentTrack = null;
         this.winTimerEvent = null;
 
+        // Вимикаємо контекстне меню у самому Phaser
+        this.input.mouse.disableContextMenu();
+
         let bg = this.add.image(640, 360, 'background');
         bg.setDisplaySize(1280, 720);
         bg.setDepth(0);
@@ -219,7 +227,7 @@ class GameScene extends Phaser.Scene {
             this.hearts.push(heart);
         }
 
-        // --- ВЛАСНІ ІКОНКИ КЕРУВАННЯ (Пауза, Звук, Назад) ---
+        // --- ВЛАСНІ ІКОНКИ КЕРУВАННЯ ---
         let pauseKey = this.textures.exists('btn_pause') ? 'btn_pause' : null;
         let soundOnKey = this.textures.exists('btn_sound_on') ? 'btn_sound_on' : null;
         let soundOffKey = this.textures.exists('btn_sound_off') ? 'btn_sound_off' : null;
@@ -275,7 +283,7 @@ class GameScene extends Phaser.Scene {
             this.toggleSound();
         });
 
-        let pauseSubText = this.add.text(640, 450, 'Натисніть P або ESC для продовження', {
+        let pauseSubText = this.add.text(640, 450, 'Натисніть SPACE або ESC для продовження', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '16px',
             fill: '#cccccc'
@@ -340,7 +348,8 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        this.input.keyboard.on('keydown-P', this.togglePause, this);
+        // Клавіші для паузи
+        this.input.keyboard.on('keydown-SPACE', this.togglePause, this);
         this.input.keyboard.on('keydown-ESC', this.togglePause, this);
 
         this.zombieSpawnTimer = this.time.addEvent({
@@ -498,14 +507,12 @@ class GameScene extends Phaser.Scene {
         });
     }
 
-    // ЕКРАН ПЕРЕМОГИ ТА ГУЧНІША МУЗИКА
     triggerWin() {
         this.isWin = true;
 
         if (this.zombieSpawnTimer) this.zombieSpawnTimer.remove();
         this.physics.pause();
 
-        // Збільшуємо гучність фонової музики до максимуму на перемозі
         if (this.currentTrack) {
             this.currentTrack.setVolume(1.0);
         }
