@@ -71,13 +71,18 @@ function create() {
 
     let bg = this.add.image(640, 360, 'background');
     bg.setDisplaySize(1280, 720);
+    bg.setDepth(0);
 
+    // Пес Патрон розташований ЗА вежею (depth = 1) та трохи нижче (Y = 275)
+    patron = this.add.image(195, 275, 'patron').setOrigin(0.5, 0.5);
+    patron.setScale(0.30);
+    patron.setDepth(1);
+    patron.angle = -15; // Початковий нахил вгору на 15 градусів
+
+    // Вежа поверх Пса Патрона (depth = 2)
     let tower = this.add.image(180, 450, 'tower');
     tower.setScale(0.8);
-
-    // Пса Патрона посунуто трохи вправо (X: 195)
-    patron = this.add.image(195, 260, 'patron').setOrigin(0.5, 0.5);
-    patron.setScale(0.30);
+    tower.setDepth(2);
 
     arrows = this.physics.add.group();
     zombies = this.physics.add.group();
@@ -90,10 +95,12 @@ function create() {
         fontSize: '20px', 
         fill: '#ffffff' 
     });
+    scoreText.setDepth(100);
 
     for (let i = 0; i < 5; i++) {
         let heart = this.add.image(1280 - 60 - (i * 65), 55, 'heart');
         heart.setScale(0.16); 
+        heart.setDepth(100);
         hearts.push(heart);
     }
 
@@ -110,6 +117,7 @@ function create() {
     }).setOrigin(0.5);
 
     pauseGroup = this.add.group([pauseOverlay, pauseText, pauseSubText]);
+    pauseGroup.setDepth(999);
     pauseGroup.setVisible(false);
 
     tracksList = [
@@ -121,7 +129,7 @@ function create() {
         { key: 'invincible', weight: 6  }
     ];
 
-    // Дозавантаження додаткових треків
+    // Дозавантаження додаткових треків у фоні
     this.load.audio('stefania', 'assets/stefania.mp3');
     this.load.audio('donbass', 'assets/donbass.mp3');
     this.load.audio('sorry', 'assets/sorry.mp3');
@@ -165,8 +173,9 @@ function update() {
     if (isGameOver || isPaused) return;
 
     let pointer = this.input.activePointer;
+    // Обертання з урахуванням вихідного нахилу (-15 градусів)
     let angle = Phaser.Math.Angle.Between(patron.x, patron.y, pointer.x, pointer.y);
-    patron.rotation = angle;
+    patron.rotation = angle - Phaser.Math.DegToRad(15);
 
     arrows.children.each((arrow) => {
         if (arrow && arrow.active) {
@@ -219,7 +228,6 @@ function triggerGameOver() {
     if (zombieSpawnTimer) zombieSpawnTimer.remove();
     this.physics.pause();
 
-    // Плавне приглушення музики при завершенні гри
     if (currentTrack && currentTrack.isPlaying) {
         this.tweens.add({
             targets: currentTrack,
@@ -228,7 +236,9 @@ function triggerGameOver() {
         });
     }
 
+    // Покриття Game Over та текст виставлені на високу глибину (depth: 1000)
     let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65);
+    overlay.setDepth(1000);
 
     gameOverText = this.add.text(640, 300, 'ГРУ ЗАКІНЧЕНО', {
         fontFamily: '"Press Start 2P", monospace',
@@ -236,6 +246,7 @@ function triggerGameOver() {
         fill: '#ffffff',
         align: 'center'
     }).setOrigin(0.5);
+    gameOverText.setDepth(1001);
 
     restartText = this.add.text(640, 400, 'ПОЧАТИ ЗНОВУ', {
         fontFamily: '"Press Start 2P", monospace',
@@ -243,6 +254,7 @@ function triggerGameOver() {
         fill: '#ffffff',
         align: 'center'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    restartText.setDepth(1001);
 
     restartText.on('pointerover', () => restartText.setStyle({ fill: '#ffcc00' }));
     restartText.on('pointerout', () => restartText.setStyle({ fill: '#ffffff' }));
@@ -286,6 +298,7 @@ function playWeightedTrack() {
 function shootArrow(pointer) {
     let arrow = arrows.create(patron.x, patron.y, 'arrow');
     arrow.setScale(0.15);
+    arrow.setDepth(3);
     
     let angle = Phaser.Math.Angle.Between(patron.x, patron.y, pointer.x, pointer.y);
     arrow.rotation = angle;
@@ -293,26 +306,25 @@ function shootArrow(pointer) {
     this.physics.velocityFromRotation(angle, 600, arrow.body.velocity);
 }
 
-// Спавн зомбі: опущені на дорогу (Y=610) + виходять не лінійкою
+// Хаотичний спавн зомбі по розширеній висоті
 function spawnZombie() {
     if (isGameOver || isPaused) return;
     
-    // Невелика випадкова затримка спавну (0-300 мс)
     let delay = Phaser.Math.Between(0, 300);
     
     this.time.delayedCall(delay, () => {
         if (isGameOver || isPaused) return;
 
-        // Позиція по висоті дороги з невеликим розкидом (від 595 до 625)
-        let groundY = Phaser.Math.Between(595, 625);
-        // Невеликий розкид за межами екрана, щоб не йшли шеренгою
+        // Розширений хаотичний діапазон по висоті (від 570 до 660)
+        let groundY = Phaser.Math.Between(570, 660);
         let startX = Phaser.Math.Between(1310, 1370);
 
         let zombie = zombies.create(startX, groundY, 'zombie');
         zombie.setOrigin(0.5, 1);
 
-        // Встановлюємо глибину відображення (zIndex), щоб ті, хто нижче, перекривали тих, хто вище
-        zombie.setDepth(groundY);
+        // Динамічний depth від 10 до 100 залежно від Y-координати
+        let depthValue = Math.floor(Phaser.Math.MapLinear(groundY, 570, 660, 10, 90));
+        zombie.setDepth(depthValue);
 
         let typeRoll = Phaser.Math.Between(1, 100);
         let speed, scale, hp, reward;
@@ -360,6 +372,7 @@ function hitZombie(arrow, zombie) {
             let startY = zombie.y - (zombie.height * zombie.scaleY * 0.5); 
             let groundY = zombie.y - 10; 
             let earnedPoints = zombie.reward || 10;
+            let currentDepth = zombie.depth;
 
             zombie.destroy();
 
@@ -369,7 +382,7 @@ function hitZombie(arrow, zombie) {
 
             let apple = this.add.image(deathX, startY, 'apple');
             apple.setScale(0.08);
-            apple.setDepth(groundY);
+            apple.setDepth(currentDepth);
 
             this.tweens.add({
                 targets: apple,
