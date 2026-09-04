@@ -43,7 +43,7 @@ function createGrainTexture(scene) {
 }
 
 // -------------------------------------------------------------------
-// 0. СЦЕНА ПОПЕРЕДНЬОГО ЗАВАНТАЖЕННЯ
+// 0. СЦЕНА ПОПЕРЕДНЬОГО ЗАВАНТАЖЕННЯ (Швидкий старт)
 // -------------------------------------------------------------------
 class PreloaderScene extends Phaser.Scene {
     constructor() {
@@ -77,9 +77,7 @@ class PreloaderScene extends Phaser.Scene {
     }
 
     create() {
-        document.fonts.ready.then(() => {
-            this.scene.start('MenuScene');
-        });
+        this.scene.start('MenuScene');
     }
 }
 
@@ -199,13 +197,15 @@ class GameScene extends Phaser.Scene {
 
         this.pigSound = this.sound.add('pig_sound', { volume: 0.35 });
 
-        this.scoreText = this.add.text(40, 40, 'Очки: 0 / 1500', { 
+        // Рахунок 0 / 1488
+        this.scoreText = this.add.text(40, 40, 'Очки: 0 / 1488', { 
             fontFamily: '"Press Start 2P", monospace', 
             fontSize: '20px', 
             fill: '#ffffff' 
         });
         this.scoreText.setDepth(100);
 
+        // Життя
         for (let i = 0; i < 5; i++) {
             let heart = this.add.image(1280 - 60 - (i * 65), 55, 'heart');
             heart.setScale(0.16); 
@@ -213,6 +213,34 @@ class GameScene extends Phaser.Scene {
             this.hearts.push(heart);
         }
 
+        // --- КНОПКИ КЕРУВАННЯ В ГРІ (Пауза / Звук) ---
+        let hudPauseBtn = this.add.text(40, 90, '[ II ]', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '18px',
+            fill: '#ffffff',
+            backgroundColor: '#000000',
+            padding: { x: 8, y: 5 }
+        }).setDepth(100).setInteractive({ useHandCursor: true });
+
+        hudPauseBtn.on('pointerdown', (pointer, x, y, event) => {
+            event.stopPropagation();
+            this.togglePause();
+        });
+
+        this.hudSoundBtn = this.add.text(125, 90, this.sound.mute ? '[ 🔇 ]' : '[ 🔊 ]', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '18px',
+            fill: '#ffffff',
+            backgroundColor: '#000000',
+            padding: { x: 8, y: 5 }
+        }).setDepth(100).setInteractive({ useHandCursor: true });
+
+        this.hudSoundBtn.on('pointerdown', (pointer, x, y, event) => {
+            event.stopPropagation();
+            this.toggleSound();
+        });
+
+        // --- ЕКРАН ПАУЗИ ---
         let pauseOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65);
         let pauseText = this.add.text(640, 260, 'ПАУЗА', {
             fontFamily: '"Press Start 2P", monospace',
@@ -230,13 +258,12 @@ class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
         this.muteBtn.on('pointerdown', () => {
-            this.sound.mute = !this.sound.mute;
-            this.muteBtn.setText(this.sound.mute ? 'ЗВУК: ВИМК' : 'ЗВУК: УВІМК');
+            this.toggleSound();
         });
 
-        let pauseSubText = this.add.text(640, 450, 'Натисніть P для продовження', {
+        let pauseSubText = this.add.text(640, 450, 'Натисніть P або ESC для продовження', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '18px',
+            fontSize: '16px',
             fill: '#cccccc'
         }).setOrigin(0.5);
 
@@ -253,15 +280,16 @@ class GameScene extends Phaser.Scene {
             let time = this.time.now;
             if (time > this.lastFired) {
                 this.shootArrow(pointer);
-                this.lastFired = time + 400;
+                this.lastFired = time + 250; // Зменшено затримку між пострілами для зручності
             }
         });
 
         this.input.keyboard.on('keydown-P', this.togglePause, this);
         this.input.keyboard.on('keydown-ESC', this.togglePause, this);
 
+        // Дуже швидкий спавн зомбі (кожні 450 мс)
         this.zombieSpawnTimer = this.time.addEvent({
-            delay: 1400,
+            delay: 450,
             callback: this.spawnZombie,
             callbackScope: this,
             loop: true
@@ -306,6 +334,16 @@ class GameScene extends Phaser.Scene {
                 });
             }
         });
+    }
+
+    toggleSound() {
+        this.sound.mute = !this.sound.mute;
+        if (this.hudSoundBtn) {
+            this.hudSoundBtn.setText(this.sound.mute ? '[ 🔇 ]' : '[ 🔊 ]');
+        }
+        if (this.muteBtn) {
+            this.muteBtn.setText(this.sound.mute ? 'ЗВУК: ВИМК' : 'ЗВУК: УВІМК');
+        }
     }
 
     togglePause() {
@@ -380,7 +418,6 @@ class GameScene extends Phaser.Scene {
         });
     }
 
-    // ЛОГІКА ПЕРЕМОГИ
     triggerWin() {
         this.isWin = true;
 
@@ -390,7 +427,6 @@ class GameScene extends Phaser.Scene {
         let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.7);
         overlay.setDepth(1000);
 
-        // ВЕЛИКИЙ НАДПИС ПЕРЕМОГА
         this.add.text(640, 240, 'ПЕРЕМОГА!', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '60px',
@@ -413,7 +449,6 @@ class GameScene extends Phaser.Scene {
             fill: '#cccccc'
         }).setOrigin(0.5).setDepth(1001);
 
-        // ТАЙМЕР НА 10 СЕКУНД
         this.winTimerEvent = this.time.addEvent({
             delay: 1000,
             callback: () => {
@@ -421,7 +456,7 @@ class GameScene extends Phaser.Scene {
                 timerText.setText(`ПОВЕРНЕННЯ ДО МЕНЮ ЧЕРЕЗ: ${countdown}`);
                 if (countdown <= 0) {
                     if (this.currentTrack) this.currentTrack.stop();
-                    this.scene.start('LevelSelectScene');
+                    this.scene.start('MenuScene');
                 }
             },
             callbackScope: this,
@@ -465,50 +500,45 @@ class GameScene extends Phaser.Scene {
         let angle = Phaser.Math.Angle.Between(this.patron.x, this.patron.y, pointer.x, pointer.y);
         arrow.rotation = angle;
         
-        this.physics.velocityFromRotation(angle, 600, arrow.body.velocity);
+        this.physics.velocityFromRotation(angle, 700, arrow.body.velocity);
     }
 
     spawnZombie() {
         if (this.isGameOver || this.isWin || this.isPaused) return;
+
+        let groundY = Phaser.Math.Between(600, 690);
+        let startX = Phaser.Math.Between(1310, 1370);
+
+        let zombie = this.zombies.create(startX, groundY, 'zombie');
+        zombie.setOrigin(0.5, 1);
+        zombie.setDepth(Math.floor(groundY));
+
+        let typeRoll = Phaser.Math.Between(1, 100);
+        let speed, scale, hp, reward;
+
+        // Збільшено бали: звичайний зомбі = 30 очок, великий = 100 очок
+        if (typeRoll <= 25) {
+            scale = 0.45;
+            speed = Phaser.Math.Between(-210, -160);
+            hp = 1;
+            reward = 30;
+        } else if (typeRoll <= 40) {
+            scale = 0.85;
+            speed = Phaser.Math.Between(-80, -50);
+            hp = 2;
+            reward = 100;
+        } else {
+            scale = 0.65;
+            speed = Phaser.Math.Between(-130, -90);
+            hp = 1;
+            reward = 30;
+        }
+
+        zombie.setScale(scale);
+        zombie.setVelocityX(speed);
         
-        let delay = Phaser.Math.Between(0, 300);
-        
-        this.time.delayedCall(delay, () => {
-            if (this.isGameOver || this.isWin || this.isPaused) return;
-
-            let groundY = Phaser.Math.Between(600, 690);
-            let startX = Phaser.Math.Between(1310, 1370);
-
-            let zombie = this.zombies.create(startX, groundY, 'zombie');
-            zombie.setOrigin(0.5, 1);
-            zombie.setDepth(Math.floor(groundY));
-
-            let typeRoll = Phaser.Math.Between(1, 100);
-            let speed, scale, hp, reward;
-
-            if (typeRoll <= 25) {
-                scale = 0.45;
-                speed = Phaser.Math.Between(-190, -140);
-                hp = 1;
-                reward = 10;
-            } else if (typeRoll <= 40) {
-                scale = 0.85;
-                speed = Phaser.Math.Between(-65, -40);
-                hp = 3;
-                reward = 30;
-            } else {
-                scale = 0.65;
-                speed = Phaser.Math.Between(-110, -70);
-                hp = 1;
-                reward = 10;
-            }
-
-            zombie.setScale(scale);
-            zombie.setVelocityX(speed);
-            
-            zombie.hp = hp;
-            zombie.reward = reward;
-        });
+        zombie.hp = hp;
+        zombie.reward = reward;
     }
 
     hitZombie(arrow, zombie) {
@@ -528,7 +558,7 @@ class GameScene extends Phaser.Scene {
                 let deathX = zombie.x;
                 let startY = zombie.y - (zombie.height * zombie.scaleY * 0.5); 
                 let groundY = zombie.y - 10; 
-                let earnedPoints = zombie.reward || 10;
+                let earnedPoints = zombie.reward || 30;
                 let currentDepth = zombie.depth;
 
                 zombie.destroy();
@@ -560,10 +590,10 @@ class GameScene extends Phaser.Scene {
                 });
                 
                 this.score += earnedPoints;
-                this.scoreText.setText('Очки: ' + this.score + ' / 1500');
+                this.scoreText.setText('Очки: ' + this.score + ' / 1488');
 
-                // ПЕРЕВІРКА НА ПЕРЕМОГУ ПРИ 1500 ОЧКАХ
-                if (this.score >= 1500 && !this.isWin) {
+                // Перевірка досягнення 1488 очок
+                if (this.score >= 1488 && !this.isWin) {
                     this.triggerWin();
                 }
             }
