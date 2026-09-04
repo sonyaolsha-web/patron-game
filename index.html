@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Пес Патрон VS Пригожин</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-    <!-- Підключаємо піксельний шрифт "Press Start 2P" з Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; }
@@ -32,19 +31,20 @@ const config = {
 
 const game = new Phaser.Game(config);
 
-let patron, arrows, zombies, scoreText;
+let patron, arrows, zombies, apples, scoreText;
 let score = 0;
 let lastFired = 0;
 
-// Змінні для системи життів та Game Over
+// Змінні системи життів
 let lives = 5;
 let hearts = [];
 let isGameOver = false;
 let gameOverText, restartText, zombieSpawnTimer;
 
-// Змінні для звукової системи
+// Змінні для звуків
 let currentTrack = null;
 let tracksList = [];
+let pigSound;
 
 function preload() {
     // Картинки
@@ -53,9 +53,11 @@ function preload() {
     this.load.image('patron', 'assets/patron.png');
     this.load.image('arrow', 'assets/arrow.png');
     this.load.image('zombie', 'assets/zombie.png');
-    this.load.image('heart', 'assets/heart.png'); // Сердечко (поклади heart.png у папку assets/)
+    this.load.image('heart', 'assets/heart.png');
+    this.load.image('apple', 'assets/apple.png'); // Яблуко
 
     // Аудіофайли
+    this.load.audio('pig_sound', 'assets/pig.mp3'); // Звук свині
     this.load.audio('music_main', 'assets/music_main.mp3');
     this.load.audio('stefania', 'assets/stefania.mp3');
     this.load.audio('donbass', 'assets/donbass.mp3');
@@ -65,13 +67,11 @@ function preload() {
 }
 
 function create() {
-    // Скидаємо стан при запуску/рестарті
     isGameOver = false;
     score = 0;
     lives = 5;
     hearts = [];
 
-    // 1. Графіка
     let bg = this.add.image(640, 360, 'background');
     bg.setDisplaySize(1280, 720);
 
@@ -83,22 +83,24 @@ function create() {
 
     arrows = this.physics.add.group();
     zombies = this.physics.add.group();
+    apples = this.add.group(); // Група для яблук
 
-    // Очки у піксельному стилі
+    // Звук свині (volume: 0.35 — тихий, але добре чутний)
+    pigSound = this.sound.add('pig_sound', { volume: 0.35 });
+
     scoreText = this.add.text(24, 24, 'Очки: 0', { 
         fontFamily: '"Press Start 2P", monospace', 
         fontSize: '24px', 
         fill: '#ffffff' 
     });
 
-    // Відображення 5 сердечок (життів) у правому верхньому кутку
+    // Сердечка (збільшено масштаб з 0.08 до 0.16 та розширено крок до 65px)
     for (let i = 0; i < 5; i++) {
-        let heart = this.add.image(1280 - 40 - (i * 45), 40, 'heart');
-        heart.setScale(0.08); // Налаштуй розмір під своє зображення якщо потрібно
+        let heart = this.add.image(1280 - 60 - (i * 65), 55, 'heart');
+        heart.setScale(0.16); 
         hearts.push(heart);
     }
 
-    // 2. Налаштування шансів (weight) для кожного треку
     tracksList = [
         { key: 'music_main', weight: 70 },
         { key: 'stefania',   weight: 6  },
@@ -117,9 +119,8 @@ function create() {
         }
     });
 
-    // Постріли
     this.input.on('pointerdown', (pointer) => {
-        if (isGameOver) return; // Не стріляємо, якщо Game Over
+        if (isGameOver) return;
         
         let time = this.time.now;
         if (time > lastFired) {
@@ -128,7 +129,6 @@ function create() {
         }
     });
 
-    // Спавн зомбі
     zombieSpawnTimer = this.time.addEvent({
         delay: 1500,
         callback: spawnZombie,
@@ -154,22 +154,20 @@ function update() {
         }
     });
 
-    // Перевірка: якщо зомбі дійшов до Патрона / вежі
     zombies.children.each((zombie) => {
         if (zombie && zombie.active && zombie.x < 120) {
             zombie.destroy();
-            takeDamage.call(this); // Втрата життя
+            takeDamage.call(this);
         }
     });
 }
 
-// Отримання шкоди (зменшення життів)
 function takeDamage() {
     if (isGameOver) return;
 
     lives--;
     if (hearts[lives]) {
-        hearts[lives].setVisible(false); // Ховаємо одне сердечко
+        hearts[lives].setVisible(false);
     }
 
     if (lives <= 0) {
@@ -177,14 +175,15 @@ function takeDamage() {
     }
 }
 
-// Екран Game Over
 function triggerGameOver() {
     isGameOver = true;
     
     if (zombieSpawnTimer) zombieSpawnTimer.remove();
-    this.physics.pause(); // Зупиняємо рух усіх об'єктів
+    this.physics.pause();
 
-    // Напис "ГРУ ЗАКІНЧЕНО" (піксельний стиль)
+    // Чорний напівпрозорий прямокутник для затемнення (альфа 0.65)
+    let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65);
+
     gameOverText = this.add.text(640, 300, 'ГРУ ЗАКІНЧЕНО', {
         fontFamily: '"Press Start 2P", monospace',
         fontSize: '44px',
@@ -192,7 +191,6 @@ function triggerGameOver() {
         align: 'center'
     }).setOrigin(0.5);
 
-    // Напис "ПОЧАТИ ЗНОВУ" (кнопка)
     restartText = this.add.text(640, 400, 'ПОЧАТИ ЗНОВУ', {
         fontFamily: '"Press Start 2P", monospace',
         fontSize: '26px',
@@ -200,17 +198,14 @@ function triggerGameOver() {
         align: 'center'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-    // Ефект підсвічування при наведенні
     restartText.on('pointerover', () => restartText.setStyle({ fill: '#ffcc00' }));
     restartText.on('pointerout', () => restartText.setStyle({ fill: '#ffffff' }));
 
-    // Рестарт гри при кліку
     restartText.on('pointerdown', () => {
         this.scene.restart();
     });
 }
 
-// Алгоритм вибору та програвання наступного треку
 function playWeightedTrack() {
     let totalWeight = tracksList.reduce((sum, item) => sum + item.weight, 0);
     let randomNum = Phaser.Math.Between(1, totalWeight);
@@ -253,8 +248,32 @@ function spawnZombie() {
 
 function hitZombie(arrow, zombie) {
     if (arrow.active && zombie.active) {
+        // Отримуємо координати смерті зомбі перед знищенням
+        let deathX = zombie.x;
+        let deathY = zombie.y;
+
         arrow.destroy();
         zombie.destroy();
+
+        // Граємо звук свині при влучанні
+        if (pigSound) {
+            pigSound.play();
+        }
+
+        // Створюємо яблуко на місці зомбі
+        let apple = this.add.image(deathX, deathY, 'apple');
+        apple.setScale(0.12);
+
+        // Плавне зникання яблука протягом 2 секунд
+        this.tweens.add({
+            targets: apple,
+            alpha: 0,
+            duration: 2000,
+            delay: 1000, // 1 секунду лежить, потім 2 секунди зникає
+            onComplete: () => {
+                apple.destroy();
+            }
+        });
         
         score += 10;
         scoreText.setText('Очки: ' + score);
