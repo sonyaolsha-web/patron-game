@@ -35,10 +35,12 @@ let patron, arrows, zombies, apples, scoreText;
 let score = 0;
 let lastFired = 0;
 
-// Змінні системи життів
+// Змінні системи життів та паузи
 let lives = 5;
 let hearts = [];
 let isGameOver = false;
+let isPaused = false;
+let pauseGroup;
 let gameOverText, restartText, zombieSpawnTimer;
 
 // Змінні для звуків
@@ -47,7 +49,7 @@ let tracksList = [];
 let pigSound;
 
 function preload() {
-    // 1. Швидке завантаження графіки (найважливіше для миттєвого старту)
+    // Графіка
     this.load.image('background', 'assets/background.png');
     this.load.image('tower', 'assets/tower.png');
     this.load.image('patron', 'assets/patron.png');
@@ -56,10 +58,8 @@ function preload() {
     this.load.image('heart', 'assets/heart.png');
     this.load.image('apple', 'assets/apple.png');
 
-    // 2. Оптимізоване завантаження звуків
+    // Аудіо
     this.load.audio('pig_sound', 'assets/pig.mp3');
-    
-    // Аудіофайли (завантажуються в режимі потокового читання)
     this.load.audio('music_main', 'assets/music_main.mp3', { stream: true });
     this.load.audio('stefania', 'assets/stefania.mp3', { stream: true });
     this.load.audio('donbass', 'assets/donbass.mp3', { stream: true });
@@ -70,6 +70,7 @@ function preload() {
 
 function create() {
     isGameOver = false;
+    isPaused = false;
     score = 0;
     lives = 5;
     hearts = [];
@@ -77,10 +78,12 @@ function create() {
     let bg = this.add.image(640, 360, 'background');
     bg.setDisplaySize(1280, 720);
 
-    let tower = this.add.image(120, 520, 'tower');
+    // Вежа піднята вгору (Y: 450) і трохи вправо (X: 180)
+    let tower = this.add.image(180, 450, 'tower');
     tower.setScale(0.8);
 
-    patron = this.add.image(120, 330, 'patron').setOrigin(0.5, 0.5);
+    // Пес Патрон над вежею (X: 180, Y: 260)
+    patron = this.add.image(180, 260, 'patron').setOrigin(0.5, 0.5);
     patron.setScale(0.30);
 
     arrows = this.physics.add.group();
@@ -89,9 +92,10 @@ function create() {
 
     pigSound = this.sound.add('pig_sound', { volume: 0.35 });
 
-    scoreText = this.add.text(24, 24, 'Очки: 0', { 
+    // Текст очок
+    scoreText = this.add.text(40, 40, 'Очки: 0', { 
         fontFamily: '"Press Start 2P", monospace', 
-        fontSize: '24px', 
+        fontSize: '20px', 
         fill: '#ffffff' 
     });
 
@@ -101,6 +105,22 @@ function create() {
         heart.setScale(0.16); 
         hearts.push(heart);
     }
+
+    // Елементи меню Паузи
+    let pauseOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.6);
+    let pauseText = this.add.text(640, 320, 'ПАУЗА', {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: '44px',
+        fill: '#ffffff'
+    }).setOrigin(0.5);
+    let pauseSubText = this.add.text(640, 400, 'Натисніть P для продовження', {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: '18px',
+        fill: '#cccccc'
+    }).setOrigin(0.5);
+
+    pauseGroup = this.add.group([pauseOverlay, pauseText, pauseSubText]);
+    pauseGroup.setVisible(false);
 
     tracksList = [
         { key: 'music_main', weight: 70 },
@@ -121,7 +141,7 @@ function create() {
     });
 
     this.input.on('pointerdown', (pointer) => {
-        if (isGameOver) return;
+        if (isGameOver || isPaused) return;
         
         let time = this.time.now;
         if (time > lastFired) {
@@ -130,8 +150,11 @@ function create() {
         }
     });
 
+    this.input.keyboard.on('keydown-P', togglePause, this);
+    this.input.keyboard.on('keydown-ESC', togglePause, this);
+
     zombieSpawnTimer = this.time.addEvent({
-        delay: 1500,
+        delay: 1400,
         callback: spawnZombie,
         callbackScope: this,
         loop: true
@@ -141,7 +164,7 @@ function create() {
 }
 
 function update() {
-    if (isGameOver) return;
+    if (isGameOver || isPaused) return;
 
     let pointer = this.input.activePointer;
     let angle = Phaser.Math.Angle.Between(patron.x, patron.y, pointer.x, pointer.y);
@@ -156,11 +179,28 @@ function update() {
     });
 
     zombies.children.each((zombie) => {
-        if (zombie && zombie.active && zombie.x < 120) {
+        // Поріг наближення до вежі зміщено відповідно до нової позиції (180px)
+        if (zombie && zombie.active && zombie.x < 180) {
             zombie.destroy();
             takeDamage.call(this);
         }
     });
+}
+
+function togglePause() {
+    if (isGameOver) return;
+
+    isPaused = !isPaused;
+
+    if (isPaused) {
+        this.physics.pause();
+        zombieSpawnTimer.paused = true;
+        pauseGroup.setVisible(true);
+    } else {
+        this.physics.resume();
+        zombieSpawnTimer.paused = false;
+        pauseGroup.setVisible(false);
+    }
 }
 
 function takeDamage() {
@@ -238,42 +278,100 @@ function shootArrow(pointer) {
     this.physics.velocityFromRotation(angle, 600, arrow.body.velocity);
 }
 
+// Посадка зомбі чітко на кам'яну дорогу внизу
 function spawnZombie() {
-    if (isGameOver) return;
-    let y = Phaser.Math.Between(450, 650);
-    let zombie = zombies.create(1320, y, 'zombie');
-    zombie.setScale(0.65);
-    zombie.setVelocityX(-80);
+    if (isGameOver || isPaused) return;
+    
+    // Лінія кам'яного паркану знаходиться біля Y = 560
+    let groundY = 560;
+    let zombie = zombies.create(1320, groundY, 'zombie');
+    
+    // Встановлюємо точку опори (Origin) на ноги зомбі
+    zombie.setOrigin(0.5, 1);
+
+    let typeRoll = Phaser.Math.Between(1, 100);
+    let speed, scale, hp, reward;
+
+    if (typeRoll <= 25) {
+        // Швидкий зомбі (1 HP, 10 очок)
+        scale = 0.45;
+        speed = Phaser.Math.Between(-190, -140);
+        hp = 1;
+        reward = 10;
+    } else if (typeRoll <= 40) {
+        // Зомбі-Танк (3 HP, 30 очок)
+        scale = 0.85;
+        speed = Phaser.Math.Between(-65, -40);
+        hp = 3;
+        reward = 30;
+    } else {
+        // Звичайний зомбі (1 HP, 10 очок)
+        scale = 0.65;
+        speed = Phaser.Math.Between(-110, -70);
+        hp = 1;
+        reward = 10;
+    }
+
+    zombie.setScale(scale);
+    zombie.setVelocityX(speed);
+    
+    zombie.hp = hp;
+    zombie.reward = reward;
 }
 
 function hitZombie(arrow, zombie) {
     if (arrow.active && zombie.active) {
-        let deathX = zombie.x;
-        let deathY = zombie.y;
-
         arrow.destroy();
-        zombie.destroy();
 
-        if (pigSound) {
-            pigSound.play();
-        }
+        zombie.hp -= 1;
 
-        // Спавн зменшеного яблука (scale: 0.05)
-        let apple = this.add.image(deathX, deathY, 'apple');
-        apple.setScale(0.05);
-
-        this.tweens.add({
-            targets: apple,
-            alpha: 0,
-            duration: 1500,
-            delay: 800,
-            onComplete: () => {
-                apple.destroy();
+        zombie.setTint(0xff0000);
+        this.time.delayedCall(100, () => {
+            if (zombie && zombie.active) {
+                zombie.clearTint();
             }
         });
-        
-        score += 10;
-        scoreText.setText('Очки: ' + score);
+
+        if (zombie.hp <= 0) {
+            let deathX = zombie.x;
+            // Початкова точка вильоту яблука (тулуба зомбі)
+            let startY = zombie.y - (zombie.height * zombie.scaleY * 0.5); 
+            let groundY = 550; // Земля, куди падатиме яблуко
+            let earnedPoints = zombie.reward || 10;
+
+            zombie.destroy();
+
+            if (pigSound) {
+                pigSound.play();
+            }
+
+            // Збільшене яблуко (0.08)
+            let apple = this.add.image(deathX, startY, 'apple');
+            apple.setScale(0.08);
+
+            // АНІМАЦІЯ ПАДІННЯ ЯБЛУКА НА ЗЕМЛЮ З ПЛАВНИМ ЗНИКНЕННЯМ
+            this.tweens.add({
+                targets: apple,
+                y: groundY,          // Падає до рівня дороги
+                duration: 400,        // Швидкість падіння
+                ease: 'Bounce.easeOut', // Легкий ефект підстрибування при ударі об землю
+                onComplete: () => {
+                    // Після того як впало — чекає і плавно зникає
+                    this.tweens.add({
+                        targets: apple,
+                        alpha: 0,
+                        duration: 1000,
+                        delay: 600,
+                        onComplete: () => {
+                            apple.destroy();
+                        }
+                    });
+                }
+            });
+            
+            score += earnedPoints;
+            scoreText.setText('Очки: ' + score);
+        }
     }
 }
 </script>
