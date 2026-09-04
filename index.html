@@ -47,23 +47,25 @@ let tracksList = [];
 let pigSound;
 
 function preload() {
-    // Картинки
+    // 1. Швидке завантаження графіки (найважливіше для миттєвого старту)
     this.load.image('background', 'assets/background.png');
     this.load.image('tower', 'assets/tower.png');
     this.load.image('patron', 'assets/patron.png');
     this.load.image('arrow', 'assets/arrow.png');
     this.load.image('zombie', 'assets/zombie.png');
     this.load.image('heart', 'assets/heart.png');
-    this.load.image('apple', 'assets/apple.png'); // Яблуко
+    this.load.image('apple', 'assets/apple.png');
 
-    // Аудіофайли
-    this.load.audio('pig_sound', 'assets/pig.mp3'); // Звук свині
-    this.load.audio('music_main', 'assets/music_main.mp3');
-    this.load.audio('stefania', 'assets/stefania.mp3');
-    this.load.audio('donbass', 'assets/donbass.mp3');
-    this.load.audio('sorry', 'assets/sorry.mp3');
-    this.load.audio('wagners', 'assets/wagners.mp3');
-    this.load.audio('invincible', 'assets/invincible.mp3');
+    // 2. Оптимізоване завантаження звуків
+    this.load.audio('pig_sound', 'assets/pig.mp3');
+    
+    // Аудіофайли (завантажуються в режимі потокового читання)
+    this.load.audio('music_main', 'assets/music_main.mp3', { stream: true });
+    this.load.audio('stefania', 'assets/stefania.mp3', { stream: true });
+    this.load.audio('donbass', 'assets/donbass.mp3', { stream: true });
+    this.load.audio('sorry', 'assets/sorry.mp3', { stream: true });
+    this.load.audio('wagners', 'assets/wagners.mp3', { stream: true });
+    this.load.audio('invincible', 'assets/invincible.mp3', { stream: true });
 }
 
 function create() {
@@ -83,9 +85,8 @@ function create() {
 
     arrows = this.physics.add.group();
     zombies = this.physics.add.group();
-    apples = this.add.group(); // Група для яблук
+    apples = this.add.group();
 
-    // Звук свині (volume: 0.35 — тихий, але добре чутний)
     pigSound = this.sound.add('pig_sound', { volume: 0.35 });
 
     scoreText = this.add.text(24, 24, 'Очки: 0', { 
@@ -94,7 +95,7 @@ function create() {
         fill: '#ffffff' 
     });
 
-    // Сердечка (збільшено масштаб з 0.08 до 0.16 та розширено крок до 65px)
+    // Сердечка
     for (let i = 0; i < 5; i++) {
         let heart = this.add.image(1280 - 60 - (i * 65), 55, 'heart');
         heart.setScale(0.16); 
@@ -181,7 +182,6 @@ function triggerGameOver() {
     if (zombieSpawnTimer) zombieSpawnTimer.remove();
     this.physics.pause();
 
-    // Чорний напівпрозорий прямокутник для затемнення (альфа 0.65)
     let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65);
 
     gameOverText = this.add.text(640, 300, 'ГРУ ЗАКІНЧЕНО', {
@@ -248,28 +248,25 @@ function spawnZombie() {
 
 function hitZombie(arrow, zombie) {
     if (arrow.active && zombie.active) {
-        // Отримуємо координати смерті зомбі перед знищенням
         let deathX = zombie.x;
         let deathY = zombie.y;
 
         arrow.destroy();
         zombie.destroy();
 
-        // Граємо звук свині при влучанні
         if (pigSound) {
             pigSound.play();
         }
 
-        // Створюємо яблуко на місці зомбі
+        // Спавн зменшеного яблука (scale: 0.05)
         let apple = this.add.image(deathX, deathY, 'apple');
-        apple.setScale(0.12);
+        apple.setScale(0.05);
 
-        // Плавне зникання яблука протягом 2 секунд
         this.tweens.add({
             targets: apple,
             alpha: 0,
-            duration: 2000,
-            delay: 1000, // 1 секунду лежить, потім 2 секунди зникає
+            duration: 1500,
+            delay: 800,
             onComplete: () => {
                 apple.destroy();
             }
