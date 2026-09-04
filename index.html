@@ -43,7 +43,7 @@ function createGrainTexture(scene) {
 }
 
 // -------------------------------------------------------------------
-// 0. СЦЕНА ПОПЕРЕДНЬОГО ЗАВАНТАЖЕННЯ (Швидкий старт)
+// 0. СЦЕНА ПОПЕРЕДНЬОГО ЗАВАНТАЖЕННЯ
 // -------------------------------------------------------------------
 class PreloaderScene extends Phaser.Scene {
     constructor() {
@@ -59,6 +59,7 @@ class PreloaderScene extends Phaser.Scene {
             fill: '#ffffff'
         }).setOrigin(0.5);
 
+        // Основні текстові ресурси
         this.load.image('background', 'assets/background.png');
         this.load.image('tower', 'assets/tower.png');
         this.load.image('patron', 'assets/patron.png');
@@ -67,6 +68,13 @@ class PreloaderScene extends Phaser.Scene {
         this.load.image('heart', 'assets/heart.png');
         this.load.image('apple', 'assets/apple.png');
 
+        // Власні іконки дій / UI
+        this.load.image('btn_pause', 'assets/btn_pause.png');
+        this.load.image('btn_sound_on', 'assets/btn_sound_on.png');
+        this.load.image('btn_sound_off', 'assets/btn_sound_off.png');
+        this.load.image('btn_back', 'assets/btn_back.png');
+
+        // Аудіо
         this.load.audio('pig_sound', 'assets/pig.mp3');
         this.load.audio('music_main', 'assets/music_main.mp3');
         this.load.audio('stefania', 'assets/stefania.mp3');
@@ -197,7 +205,6 @@ class GameScene extends Phaser.Scene {
 
         this.pigSound = this.sound.add('pig_sound', { volume: 0.35 });
 
-        // Рахунок 0 / 1488
         this.scoreText = this.add.text(40, 40, 'Очки: 0 / 1488', { 
             fontFamily: '"Press Start 2P", monospace', 
             fontSize: '20px', 
@@ -205,7 +212,6 @@ class GameScene extends Phaser.Scene {
         });
         this.scoreText.setDepth(100);
 
-        // Життя
         for (let i = 0; i < 5; i++) {
             let heart = this.add.image(1280 - 60 - (i * 65), 55, 'heart');
             heart.setScale(0.16); 
@@ -213,32 +219,40 @@ class GameScene extends Phaser.Scene {
             this.hearts.push(heart);
         }
 
-        // --- КНОПКИ КЕРУВАННЯ В ГРІ (Пауза / Звук) ---
-        let hudPauseBtn = this.add.text(40, 90, '[ II ]', {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: '18px',
-            fill: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 8, y: 5 }
-        }).setDepth(100).setInteractive({ useHandCursor: true });
+        // --- ВЛАСНІ ІКОНКИ КЕРУВАННЯ (Пауза, Звук, Назад) ---
+        let pauseKey = this.textures.exists('btn_pause') ? 'btn_pause' : null;
+        let soundOnKey = this.textures.exists('btn_sound_on') ? 'btn_sound_on' : null;
+        let soundOffKey = this.textures.exists('btn_sound_off') ? 'btn_sound_off' : null;
+        let backKey = this.textures.exists('btn_back') ? 'btn_back' : null;
 
-        hudPauseBtn.on('pointerdown', (pointer, x, y, event) => {
-            event.stopPropagation();
-            this.togglePause();
-        });
+        // 1. Кнопка Паузи
+        if (pauseKey) {
+            this.hudPauseBtn = this.add.image(50, 100, 'btn_pause').setDepth(100).setInteractive({ useHandCursor: true });
+            this.hudPauseBtn.setDisplaySize(40, 40);
+        } else {
+            this.hudPauseBtn = this.add.text(40, 90, '[ II ]', { fontFamily: '"Press Start 2P"', fontSize: '18px', fill: '#fff', backgroundColor: '#000', padding: {x:8, y:5} }).setDepth(100).setInteractive({ useHandCursor: true });
+        }
+        this.hudPauseBtn.on('pointerdown', (p, x, y, e) => { e.stopPropagation(); this.togglePause(); });
 
-        this.hudSoundBtn = this.add.text(125, 90, this.sound.mute ? '[ 🔇 ]' : '[ 🔊 ]', {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: '18px',
-            fill: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 8, y: 5 }
-        }).setDepth(100).setInteractive({ useHandCursor: true });
+        // 2. Кнопка Звуку
+        let currentSoundTexture = this.sound.mute ? soundOffKey : soundOnKey;
+        if (currentSoundTexture) {
+            this.hudSoundBtn = this.add.image(105, 100, currentSoundTexture).setDepth(100).setInteractive({ useHandCursor: true });
+            this.hudSoundBtn.setDisplaySize(40, 40);
+        } else {
+            this.hudSoundBtn = this.add.text(125, 90, this.sound.mute ? '[ 🔇 ]' : '[ 🔊 ]', { fontFamily: '"Press Start 2P"', fontSize: '18px', fill: '#fff', backgroundColor: '#000', padding: {x:8, y:5} }).setDepth(100).setInteractive({ useHandCursor: true });
+        }
+        this.hudSoundBtn.on('pointerdown', (p, x, y, e) => { e.stopPropagation(); this.toggleSound(); });
 
-        this.hudSoundBtn.on('pointerdown', (pointer, x, y, event) => {
-            event.stopPropagation();
-            this.toggleSound();
-        });
+        // 3. Кнопка Повернення в меню
+        if (backKey) {
+            this.hudBackBtn = this.add.image(160, 100, 'btn_back').setDepth(100).setInteractive({ useHandCursor: true });
+            this.hudBackBtn.setDisplaySize(40, 40);
+        } else {
+            this.hudBackBtn = this.add.text(210, 90, '[ ↩ ]', { fontFamily: '"Press Start 2P"', fontSize: '18px', fill: '#fff', backgroundColor: '#000', padding: {x:8, y:5} }).setDepth(100).setInteractive({ useHandCursor: true });
+        }
+        this.hudBackBtn.on('pointerdown', (p, x, y, e) => { e.stopPropagation(); this.showExitConfirmModal(); });
+
 
         // --- ЕКРАН ПАУЗИ ---
         let pauseOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65);
@@ -271,6 +285,48 @@ class GameScene extends Phaser.Scene {
         this.pauseGroup.setDepth(999);
         this.pauseGroup.setVisible(false);
 
+        // --- МОДАЛЬНЕ ВІКНО ПІДТВЕРДЖЕННЯ ВИХОДУ ---
+        let exitOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.75);
+        let exitQuestion = this.add.text(640, 280, 'Ви точно хочете вийти в меню?', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '22px',
+            fill: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        let yesBtn = this.add.text(500, 400, 'ТАК', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '24px',
+            fill: '#ffffff',
+            backgroundColor: '#882222',
+            padding: { x: 25, y: 12 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        let noBtn = this.add.text(780, 400, 'НІ', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '24px',
+            fill: '#ffffff',
+            backgroundColor: '#228822',
+            padding: { x: 25, y: 12 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        yesBtn.on('pointerover', () => yesBtn.setStyle({ fill: '#ffcc00' }));
+        yesBtn.on('pointerout', () => yesBtn.setStyle({ fill: '#ffffff' }));
+        yesBtn.on('pointerdown', () => {
+            if (this.currentTrack) this.currentTrack.stop();
+            this.scene.start('MenuScene');
+        });
+
+        noBtn.on('pointerover', () => noBtn.setStyle({ fill: '#ffcc00' }));
+        noBtn.on('pointerout', () => noBtn.setStyle({ fill: '#ffffff' }));
+        noBtn.on('pointerdown', () => {
+            this.hideExitConfirmModal();
+        });
+
+        this.exitModalGroup = this.add.group([exitOverlay, exitQuestion, yesBtn, noBtn]);
+        this.exitModalGroup.setDepth(1000);
+        this.exitModalGroup.setVisible(false);
+
         this.tracksList = ['music_main', 'stefania', 'donbass', 'sorry', 'wagners', 'invincible'];
         this.playRandomTrack();
 
@@ -280,16 +336,15 @@ class GameScene extends Phaser.Scene {
             let time = this.time.now;
             if (time > this.lastFired) {
                 this.shootArrow(pointer);
-                this.lastFired = time + 250; // Зменшено затримку між пострілами для зручності
+                this.lastFired = time + 300;
             }
         });
 
         this.input.keyboard.on('keydown-P', this.togglePause, this);
         this.input.keyboard.on('keydown-ESC', this.togglePause, this);
 
-        // Дуже швидкий спавн зомбі (кожні 450 мс)
         this.zombieSpawnTimer = this.time.addEvent({
-            delay: 450,
+            delay: 900,
             callback: this.spawnZombie,
             callbackScope: this,
             loop: true
@@ -336,10 +391,34 @@ class GameScene extends Phaser.Scene {
         });
     }
 
+    showExitConfirmModal() {
+        if (this.isGameOver || this.isWin) return;
+        if (!this.isPaused) {
+            this.togglePause();
+        }
+        this.pauseGroup.setVisible(false);
+        this.exitModalGroup.setVisible(true);
+    }
+
+    hideExitConfirmModal() {
+        this.exitModalGroup.setVisible(false);
+        if (this.isPaused) {
+            this.togglePause();
+        }
+    }
+
     toggleSound() {
         this.sound.mute = !this.sound.mute;
+        
+        let soundOnKey = this.textures.exists('btn_sound_on') ? 'btn_sound_on' : null;
+        let soundOffKey = this.textures.exists('btn_sound_off') ? 'btn_sound_off' : null;
+
         if (this.hudSoundBtn) {
-            this.hudSoundBtn.setText(this.sound.mute ? '[ 🔇 ]' : '[ 🔊 ]');
+            if (this.hudSoundBtn.setTexture) {
+                this.hudSoundBtn.setTexture(this.sound.mute ? soundOffKey : soundOnKey);
+            } else {
+                this.hudSoundBtn.setText(this.sound.mute ? '[ 🔇 ]' : '[ 🔊 ]');
+            }
         }
         if (this.muteBtn) {
             this.muteBtn.setText(this.sound.mute ? 'ЗВУК: ВИМК' : 'ЗВУК: УВІМК');
@@ -360,6 +439,7 @@ class GameScene extends Phaser.Scene {
             this.physics.resume();
             this.zombieSpawnTimer.paused = false;
             this.pauseGroup.setVisible(false);
+            this.exitModalGroup.setVisible(false);
         }
     }
 
@@ -418,11 +498,17 @@ class GameScene extends Phaser.Scene {
         });
     }
 
+    // ЕКРАН ПЕРЕМОГИ ТА ГУЧНІША МУЗИКА
     triggerWin() {
         this.isWin = true;
 
         if (this.zombieSpawnTimer) this.zombieSpawnTimer.remove();
         this.physics.pause();
+
+        // Збільшуємо гучність фонової музики до максимуму на перемозі
+        if (this.currentTrack) {
+            this.currentTrack.setVolume(1.0);
+        }
 
         let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.7);
         overlay.setDepth(1000);
@@ -516,7 +602,6 @@ class GameScene extends Phaser.Scene {
         let typeRoll = Phaser.Math.Between(1, 100);
         let speed, scale, hp, reward;
 
-        // Збільшено бали: звичайний зомбі = 30 очок, великий = 100 очок
         if (typeRoll <= 25) {
             scale = 0.45;
             speed = Phaser.Math.Between(-210, -160);
@@ -592,7 +677,6 @@ class GameScene extends Phaser.Scene {
                 this.score += earnedPoints;
                 this.scoreText.setText('Очки: ' + this.score + ' / 1488');
 
-                // Перевірка досягнення 1488 очок
                 if (this.score >= 1488 && !this.isWin) {
                     this.triggerWin();
                 }
