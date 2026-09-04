@@ -49,7 +49,7 @@ let tracksList = [];
 let pigSound;
 
 function preload() {
-    // Графіка
+    // Графіка та основні аудіо
     this.load.image('background', 'assets/background.png');
     this.load.image('tower', 'assets/tower.png');
     this.load.image('patron', 'assets/patron.png');
@@ -58,14 +58,8 @@ function preload() {
     this.load.image('heart', 'assets/heart.png');
     this.load.image('apple', 'assets/apple.png');
 
-    // Аудіо
     this.load.audio('pig_sound', 'assets/pig.mp3');
-    this.load.audio('music_main', 'assets/music_main.mp3', { stream: true });
-    this.load.audio('stefania', 'assets/stefania.mp3', { stream: true });
-    this.load.audio('donbass', 'assets/donbass.mp3', { stream: true });
-    this.load.audio('sorry', 'assets/sorry.mp3', { stream: true });
-    this.load.audio('wagners', 'assets/wagners.mp3', { stream: true });
-    this.load.audio('invincible', 'assets/invincible.mp3', { stream: true });
+    this.load.audio('music_main', 'assets/music_main.mp3');
 }
 
 function create() {
@@ -78,12 +72,11 @@ function create() {
     let bg = this.add.image(640, 360, 'background');
     bg.setDisplaySize(1280, 720);
 
-    // Вежа піднята вгору (Y: 450) і трохи вправо (X: 180)
     let tower = this.add.image(180, 450, 'tower');
     tower.setScale(0.8);
 
-    // Пес Патрон над вежею (X: 180, Y: 260)
-    patron = this.add.image(180, 260, 'patron').setOrigin(0.5, 0.5);
+    // Пса Патрона посунуто трохи вправо (X: 195)
+    patron = this.add.image(195, 260, 'patron').setOrigin(0.5, 0.5);
     patron.setScale(0.30);
 
     arrows = this.physics.add.group();
@@ -92,21 +85,18 @@ function create() {
 
     pigSound = this.sound.add('pig_sound', { volume: 0.35 });
 
-    // Текст очок
     scoreText = this.add.text(40, 40, 'Очки: 0', { 
         fontFamily: '"Press Start 2P", monospace', 
         fontSize: '20px', 
         fill: '#ffffff' 
     });
 
-    // Сердечка
     for (let i = 0; i < 5; i++) {
         let heart = this.add.image(1280 - 60 - (i * 65), 55, 'heart');
         heart.setScale(0.16); 
         hearts.push(heart);
     }
 
-    // Елементи меню Паузи
     let pauseOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.6);
     let pauseText = this.add.text(640, 320, 'ПАУЗА', {
         fontFamily: '"Press Start 2P", monospace',
@@ -130,6 +120,14 @@ function create() {
         { key: 'wagners',    weight: 6  },
         { key: 'invincible', weight: 6  }
     ];
+
+    // Дозавантаження додаткових треків
+    this.load.audio('stefania', 'assets/stefania.mp3');
+    this.load.audio('donbass', 'assets/donbass.mp3');
+    this.load.audio('sorry', 'assets/sorry.mp3');
+    this.load.audio('wagners', 'assets/wagners.mp3');
+    this.load.audio('invincible', 'assets/invincible.mp3');
+    this.load.start();
 
     this.input.once('pointerdown', () => {
         if (this.sound.context.state === 'suspended') {
@@ -179,7 +177,6 @@ function update() {
     });
 
     zombies.children.each((zombie) => {
-        // Поріг наближення до вежі зміщено відповідно до нової позиції (180px)
         if (zombie && zombie.active && zombie.x < 180) {
             zombie.destroy();
             takeDamage.call(this);
@@ -222,6 +219,15 @@ function triggerGameOver() {
     if (zombieSpawnTimer) zombieSpawnTimer.remove();
     this.physics.pause();
 
+    // Плавне приглушення музики при завершенні гри
+    if (currentTrack && currentTrack.isPlaying) {
+        this.tweens.add({
+            targets: currentTrack,
+            volume: 0.08,
+            duration: 1000
+        });
+    }
+
     let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65);
 
     gameOverText = this.add.text(640, 300, 'ГРУ ЗАКІНЧЕНО', {
@@ -242,6 +248,9 @@ function triggerGameOver() {
     restartText.on('pointerout', () => restartText.setStyle({ fill: '#ffffff' }));
 
     restartText.on('pointerdown', () => {
+        if (currentTrack) {
+            currentTrack.stop();
+        }
         this.scene.restart();
     });
 }
@@ -259,10 +268,16 @@ function playWeightedTrack() {
         randomNum -= track.weight;
     }
 
+    if (!this.cache.audio.exists(selectedKey)) {
+        selectedKey = 'music_main';
+    }
+
     currentTrack = this.sound.add(selectedKey, { volume: 0.5 });
 
     currentTrack.once('complete', () => {
-        playWeightedTrack.call(this);
+        if (!isGameOver) {
+            playWeightedTrack.call(this);
+        }
     });
 
     currentTrack.play();
@@ -278,45 +293,53 @@ function shootArrow(pointer) {
     this.physics.velocityFromRotation(angle, 600, arrow.body.velocity);
 }
 
-// Посадка зомбі чітко на кам'яну дорогу внизу
+// Спавн зомбі: опущені на дорогу (Y=610) + виходять не лінійкою
 function spawnZombie() {
     if (isGameOver || isPaused) return;
     
-    // Лінія кам'яного паркану знаходиться біля Y = 560
-    let groundY = 560;
-    let zombie = zombies.create(1320, groundY, 'zombie');
+    // Невелика випадкова затримка спавну (0-300 мс)
+    let delay = Phaser.Math.Between(0, 300);
     
-    // Встановлюємо точку опори (Origin) на ноги зомбі
-    zombie.setOrigin(0.5, 1);
+    this.time.delayedCall(delay, () => {
+        if (isGameOver || isPaused) return;
 
-    let typeRoll = Phaser.Math.Between(1, 100);
-    let speed, scale, hp, reward;
+        // Позиція по висоті дороги з невеликим розкидом (від 595 до 625)
+        let groundY = Phaser.Math.Between(595, 625);
+        // Невеликий розкид за межами екрана, щоб не йшли шеренгою
+        let startX = Phaser.Math.Between(1310, 1370);
 
-    if (typeRoll <= 25) {
-        // Швидкий зомбі (1 HP, 10 очок)
-        scale = 0.45;
-        speed = Phaser.Math.Between(-190, -140);
-        hp = 1;
-        reward = 10;
-    } else if (typeRoll <= 40) {
-        // Зомбі-Танк (3 HP, 30 очок)
-        scale = 0.85;
-        speed = Phaser.Math.Between(-65, -40);
-        hp = 3;
-        reward = 30;
-    } else {
-        // Звичайний зомбі (1 HP, 10 очок)
-        scale = 0.65;
-        speed = Phaser.Math.Between(-110, -70);
-        hp = 1;
-        reward = 10;
-    }
+        let zombie = zombies.create(startX, groundY, 'zombie');
+        zombie.setOrigin(0.5, 1);
 
-    zombie.setScale(scale);
-    zombie.setVelocityX(speed);
-    
-    zombie.hp = hp;
-    zombie.reward = reward;
+        // Встановлюємо глибину відображення (zIndex), щоб ті, хто нижче, перекривали тих, хто вище
+        zombie.setDepth(groundY);
+
+        let typeRoll = Phaser.Math.Between(1, 100);
+        let speed, scale, hp, reward;
+
+        if (typeRoll <= 25) {
+            scale = 0.45;
+            speed = Phaser.Math.Between(-190, -140);
+            hp = 1;
+            reward = 10;
+        } else if (typeRoll <= 40) {
+            scale = 0.85;
+            speed = Phaser.Math.Between(-65, -40);
+            hp = 3;
+            reward = 30;
+        } else {
+            scale = 0.65;
+            speed = Phaser.Math.Between(-110, -70);
+            hp = 1;
+            reward = 10;
+        }
+
+        zombie.setScale(scale);
+        zombie.setVelocityX(speed);
+        
+        zombie.hp = hp;
+        zombie.reward = reward;
+    });
 }
 
 function hitZombie(arrow, zombie) {
@@ -334,9 +357,8 @@ function hitZombie(arrow, zombie) {
 
         if (zombie.hp <= 0) {
             let deathX = zombie.x;
-            // Початкова точка вильоту яблука (тулуба зомбі)
             let startY = zombie.y - (zombie.height * zombie.scaleY * 0.5); 
-            let groundY = 550; // Земля, куди падатиме яблуко
+            let groundY = zombie.y - 10; 
             let earnedPoints = zombie.reward || 10;
 
             zombie.destroy();
@@ -345,18 +367,16 @@ function hitZombie(arrow, zombie) {
                 pigSound.play();
             }
 
-            // Збільшене яблуко (0.08)
             let apple = this.add.image(deathX, startY, 'apple');
             apple.setScale(0.08);
+            apple.setDepth(groundY);
 
-            // АНІМАЦІЯ ПАДІННЯ ЯБЛУКА НА ЗЕМЛЮ З ПЛАВНИМ ЗНИКНЕННЯМ
             this.tweens.add({
                 targets: apple,
-                y: groundY,          // Падає до рівня дороги
-                duration: 400,        // Швидкість падіння
-                ease: 'Bounce.easeOut', // Легкий ефект підстрибування при ударі об землю
+                y: groundY,
+                duration: 400,
+                ease: 'Bounce.easeOut',
                 onComplete: () => {
-                    // Після того як впало — чекає і плавно зникає
                     this.tweens.add({
                         targets: apple,
                         alpha: 0,
