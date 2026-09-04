@@ -72,13 +72,11 @@ function create() {
     bg.setDisplaySize(1280, 720);
     bg.setDepth(0);
 
-    // Пес Патрон ЗА вежею (depth = 1) та трохи нижче
     patron = this.add.image(195, 275, 'patron').setOrigin(0.5, 0.5);
     patron.setScale(0.30);
     patron.setDepth(1);
-    patron.rotation = -0.26; // Початковий нахил трохи вгору (~15 градусів)
+    patron.rotation = -0.26;
 
-    // Вежа поверх Пса Патрона (depth = 2)
     let tower = this.add.image(180, 450, 'tower');
     tower.setScale(0.8);
     tower.setDepth(2);
@@ -119,16 +117,9 @@ function create() {
     pauseGroup.setDepth(999);
     pauseGroup.setVisible(false);
 
-    tracksList = [
-        { key: 'music_main', weight: 70 },
-        { key: 'stefania',   weight: 6  },
-        { key: 'donbass',    weight: 6  },
-        { key: 'sorry',      weight: 6  },
-        { key: 'wagners',    weight: 6  },
-        { key: 'invincible', weight: 6  }
-    ];
+    // Список треків з однакової пріоритетністю
+    tracksList = ['music_main', 'stefania', 'donbass', 'sorry', 'wagners', 'invincible'];
 
-    // Дозавантаження додаткових треків
     this.load.audio('stefania', 'assets/stefania.mp3');
     this.load.audio('donbass', 'assets/donbass.mp3');
     this.load.audio('sorry', 'assets/sorry.mp3');
@@ -136,14 +127,13 @@ function create() {
     this.load.audio('invincible', 'assets/invincible.mp3');
     this.load.start();
 
-    // Запуск музики СУВОРО після першого кліку
     this.input.once('pointerdown', () => {
         if (!musicStarted) {
             musicStarted = true;
             if (this.sound.context.state === 'suspended') {
                 this.sound.context.resume();
             }
-            playWeightedTrack.call(this);
+            playRandomTrack.call(this);
         }
     });
 
@@ -176,7 +166,7 @@ function update() {
     let pointer = this.input.activePointer;
     if (pointer) {
         let angle = Phaser.Math.Angle.Between(patron.x, patron.y, pointer.x, pointer.y);
-        patron.rotation = angle - 0.26; // Плавний нахил
+        patron.rotation = angle - 0.26;
     }
 
     arrows.children.each((arrow) => {
@@ -188,9 +178,24 @@ function update() {
     });
 
     zombies.children.each((zombie) => {
-        if (zombie && zombie.active && zombie.x < 180) {
-            zombie.destroy();
+        // Коли зомбі доходить до вежі (X < 180) і ще не зникає
+        if (zombie && zombie.active && zombie.x < 180 && !zombie.isDying) {
+            zombie.isDying = true; // Позначка, щоб анімація не запускалась двічі
+            zombie.setVelocityX(0); // Зупиняємо рух
+            
             takeDamage.call(this);
+
+            // АНІМАЦІЯ ЗМЕНШЕННЯ ТА ЗНИКНЕННЯ
+            this.tweens.add({
+                targets: zombie,
+                scaleX: 0,
+                scaleY: 0,
+                alpha: 0,
+                duration: 400,
+                onComplete: () => {
+                    zombie.destroy();
+                }
+            });
         }
     });
 }
@@ -268,18 +273,10 @@ function triggerGameOver() {
     });
 }
 
-function playWeightedTrack() {
-    let totalWeight = tracksList.reduce((sum, item) => sum + item.weight, 0);
-    let randomNum = Phaser.Math.Between(1, totalWeight);
-    let selectedKey = tracksList[0].key;
-
-    for (let track of tracksList) {
-        if (randomNum <= track.weight) {
-            selectedKey = track.key;
-            break;
-        }
-        randomNum -= track.weight;
-    }
+// Випадковий вибір пісні з абсолютно однакової ймовірністю
+function playRandomTrack() {
+    let randomIndex = Phaser.Math.Between(0, tracksList.length - 1);
+    let selectedKey = tracksList[randomIndex];
 
     if (!this.cache.audio.exists(selectedKey)) {
         selectedKey = 'music_main';
@@ -289,7 +286,7 @@ function playWeightedTrack() {
 
     currentTrack.once('complete', () => {
         if (!isGameOver) {
-            playWeightedTrack.call(this);
+            playRandomTrack.call(this);
         }
     });
 
@@ -307,7 +304,6 @@ function shootArrow(pointer) {
     this.physics.velocityFromRotation(angle, 600, arrow.body.velocity);
 }
 
-// Стабільна функція спавну зомбі
 function spawnZombie() {
     if (isGameOver || isPaused) return;
     
@@ -316,14 +312,12 @@ function spawnZombie() {
     this.time.delayedCall(delay, () => {
         if (isGameOver || isPaused) return;
 
-        // Хаотична висота (від 570 до 660)
-        let groundY = Phaser.Math.Between(570, 660);
+        // Діапазон від поточного рівня (570) і ще нижче до низу (680)
+        let groundY = Phaser.Math.Between(570, 680);
         let startX = Phaser.Math.Between(1310, 1370);
 
         let zombie = zombies.create(startX, groundY, 'zombie');
         zombie.setOrigin(0.5, 1);
-
-        // Стабільне задання шару за висотою Y
         zombie.setDepth(Math.floor(groundY));
 
         let typeRoll = Phaser.Math.Between(1, 100);
@@ -355,7 +349,7 @@ function spawnZombie() {
 }
 
 function hitZombie(arrow, zombie) {
-    if (arrow.active && zombie.active) {
+    if (arrow.active && zombie.active && !zombie.isDying) {
         arrow.destroy();
 
         zombie.hp -= 1;
