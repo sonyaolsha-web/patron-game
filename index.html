@@ -194,14 +194,14 @@ class GameScene extends Phaser.Scene {
         bg.setDisplaySize(1280, 720);
         bg.setDepth(0);
 
-        // Зменшена вежа та оновлена позиція
-        let tower = this.add.image(100, 480, 'tower');
-        tower.setScale(0.45);
+        // Вежа ще менша (0.28) і розміщена зліва
+        let tower = this.add.image(70, 520, 'tower');
+        tower.setScale(0.28);
         tower.setDepth(2);
 
-        // Пес Патрон розміщений зверху вежі
-        this.patron = this.add.image(100, 260, 'patron').setOrigin(0.5, 0.5);
-        this.patron.setScale(0.25);
+        // Пес Патрон відповідного компактного розміру на верхівці
+        this.patron = this.add.image(70, 380, 'patron').setOrigin(0.5, 0.5);
+        this.patron.setScale(0.18);
         this.patron.setDepth(3);
         this.patron.rotation = -0.26;
 
@@ -388,7 +388,7 @@ class GameScene extends Phaser.Scene {
         });
 
         this.zombies.children.each((zombie) => {
-            if (zombie && zombie.active && zombie.x < 180 && !zombie.isDying) {
+            if (zombie && zombie.active && zombie.x < 120 && !zombie.isDying) {
                 zombie.isDying = true;
                 zombie.setVelocityX(0);
                 
@@ -615,7 +615,7 @@ class GameScene extends Phaser.Scene {
 
     shootArrow(pointer) {
         let arrow = this.arrows.create(this.patron.x, this.patron.y, 'arrow');
-        arrow.setScale(0.15);
+        arrow.setScale(0.12);
         arrow.setDepth(3);
         
         let angle = Phaser.Math.Angle.Between(this.patron.x, this.patron.y, pointer.x, pointer.y);
