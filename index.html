@@ -194,14 +194,16 @@ class GameScene extends Phaser.Scene {
         bg.setDisplaySize(1280, 720);
         bg.setDepth(0);
 
-        this.patron = this.add.image(195, 275, 'patron').setOrigin(0.5, 0.5);
-        this.patron.setScale(0.30);
-        this.patron.setDepth(1);
-        this.patron.rotation = -0.26;
-
-        let tower = this.add.image(180, 450, 'tower');
-        tower.setScale(0.8);
+        // Зменшена вежа та оновлена позиція
+        let tower = this.add.image(100, 480, 'tower');
+        tower.setScale(0.45);
         tower.setDepth(2);
+
+        // Пес Патрон розміщений зверху вежі
+        this.patron = this.add.image(100, 260, 'patron').setOrigin(0.5, 0.5);
+        this.patron.setScale(0.25);
+        this.patron.setDepth(3);
+        this.patron.rotation = -0.26;
 
         this.arrows = this.physics.add.group();
         this.zombies = this.physics.add.group();
@@ -276,7 +278,6 @@ class GameScene extends Phaser.Scene {
             this.toggleSound();
         });
 
-        // Адаптивний текст для сенсора чи ПК
         let isTouchDevice = this.sys.game.device.input.touch;
         let hintMsg = isTouchDevice 
             ? 'Натисніть на екран або [ II ] для продовження' 
@@ -289,7 +290,6 @@ class GameScene extends Phaser.Scene {
             align: 'center'
         }).setOrigin(0.5);
 
-        // Клік по фону меню паузи відновлює гру
         pauseOverlay.on('pointerdown', () => {
             if (this.isPaused && !this.exitModalGroup.visible) {
                 this.togglePause();
