@@ -194,17 +194,17 @@ class GameScene extends Phaser.Scene {
         bg.setDisplaySize(1280, 720);
         bg.setDepth(0);
 
-        // --- ВЕЖА (Масштаб 0.24, посунута вправо до X=130) ---
+        // --- ПЕС ПАТРОН (Низький depth = 1) ---
+        this.patron = this.add.image(170, 230, 'patron').setOrigin(0.5, 0.5);
+        this.patron.setScale(0.3);
+        this.patron.setDepth(1);
+        this.patron.rotation = +15;
+
+        // --- ВЕЖА (Високий depth = 10, тому вона ПОВЕРХ Пса Патрона) ---
         let tower = this.add.image(144, 580, 'tower');
         tower.setOrigin(0.5, 1);
         tower.setScale(0.24);
-        tower.setDepth(2);
-
-        // --- ПЕС ПАТРОН (Розміщений зверху на вежі) ---
-        this.patron = this.add.image(170, 230, 'patron').setOrigin(0.5, 0.5);
-        this.patron.setScale(0.3);
-        this.patron.setDepth(3);
-        this.patron.rotation = +15;
+        tower.setDepth(10);
 
         this.arrows = this.physics.add.group();
         this.zombies = this.physics.add.group();
@@ -617,7 +617,7 @@ class GameScene extends Phaser.Scene {
     shootArrow(pointer) {
         let arrow = this.arrows.create(this.patron.x, this.patron.y, 'arrow');
         arrow.setScale(0.12);
-        arrow.setDepth(3);
+        arrow.setDepth(11); // Кулі летять поверх вежі
         
         let angle = Phaser.Math.Angle.Between(this.patron.x, this.patron.y, pointer.x, pointer.y);
         arrow.rotation = angle;
