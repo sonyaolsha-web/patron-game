@@ -53,12 +53,12 @@ function formatTime(seconds) {
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
-// Менеджер фонової музики меню
+// Глобальний менеджер фонової музики меню
 function playMenuMusic(scene) {
     if (!scene.game.menuMusic) {
         scene.game.menuMusic = scene.sound.add('menu_music', { volume: 0.5, loop: true });
     }
-    if (!scene.game.menuMusic.isPlaying) {
+    if (!scene.game.menuMusic.isPlaying && !scene.sound.locked) {
         scene.game.menuMusic.play();
     }
 }
@@ -100,7 +100,7 @@ class PreloaderScene extends Phaser.Scene {
         this.load.image('btn_sound_off', 'assets/btn_sound_off.png');
         this.load.image('btn_back', 'assets/btn_back.png');
 
-        this.load.audio('menu_music', 'assets/menu_music.mp3');
+        this.load.audio('menu_music', 'assets/menu_music.mp3'); 
         this.load.audio('pig_sound', 'assets/pig.mp3');
         this.load.audio('music_main', 'assets/music_main.mp3');
         this.load.audio('stefania', 'assets/stefania.mp3');
@@ -125,8 +125,6 @@ class MenuScene extends Phaser.Scene {
     }
 
     create() {
-        playMenuMusic(this);
-
         if (this.textures.exists('menu_bg')) {
             let bg = this.add.image(640, 360, 'menu_bg');
             bg.setDisplaySize(1280, 720);
@@ -165,9 +163,6 @@ class MenuScene extends Phaser.Scene {
 
         const buttonsData = [
             { text: 'ПОЧАТИ ГРУ', action: () => {
-                if (this.sound.context.state === 'suspended') {
-                    this.sound.context.resume();
-                }
                 this.scene.start('LevelSelectScene');
             }},
             { text: 'НАЛАШТУВАННЯ', action: () => {
@@ -188,6 +183,25 @@ class MenuScene extends Phaser.Scene {
             let btnY = startY + index * spacingY;
             this.createPixelMenuButton(640, btnY, btnInfo.text, btnInfo.action);
         });
+
+        // Перевірка блокування звуку браузером при заході на сайт
+        if (this.sound.locked) {
+            let startOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.85).setDepth(2000).setInteractive();
+            let startText = this.add.text(640, 360, 'НАТИСНІТЬ БУДЬ-ДЕ, ЩОБ ПОЧАТИ ГРУ', {
+                fontFamily: '"Press Start 2P", monospace',
+                fontSize: '22px',
+                fill: '#ffe57f',
+                align: 'center'
+            }).setOrigin(0.5).setDepth(2001);
+
+            startOverlay.once('pointerdown', () => {
+                startOverlay.destroy();
+                startText.destroy();
+                playMenuMusic(this);
+            });
+        } else {
+            playMenuMusic(this);
+        }
     }
 
     createPixelMenuButton(x, y, textLabel, callback) {
@@ -495,11 +509,13 @@ class GameScene extends Phaser.Scene {
         this.hearts = [];
         
         this.lastFired = 0;
-        this.fireRateDelay = 250; 
+        // Збільшено затримку пострілів до 350 мс для кращого контролю
+        this.fireRateDelay = 350; 
         this.elapsedSeconds = 0;
 
         this.currentTrack = null;
         this.specialTrack = null;
+        this.winTimerEvent = null;
 
         this.input.mouse.disableContextMenu();
 
@@ -510,6 +526,7 @@ class GameScene extends Phaser.Scene {
         this.patron = this.add.image(170, 230, 'patron').setOrigin(0.5, 0.5);
         this.patron.setScale(0.3);
         this.patron.setDepth(1);
+        this.patron.rotation = +15;
 
         let tower = this.add.image(144, 580, 'tower');
         tower.setOrigin(0.5, 1);
@@ -518,7 +535,7 @@ class GameScene extends Phaser.Scene {
 
         this.arrows = this.physics.add.group();
         this.zombies = this.physics.add.group();
-        this.apples = this.physics.add.group();
+        this.apples = this.add.group();
 
         this.pigSound = this.sound.add('pig_sound', { volume: 0.12 });
 
@@ -693,7 +710,6 @@ class GameScene extends Phaser.Scene {
         });
 
         this.physics.add.overlap(this.arrows, this.zombies, this.hitZombie, null, this);
-        this.physics.add.overlap(this.arrows, this.apples, this.collectApple, null, this);
     }
 
     update() {
@@ -732,97 +748,6 @@ class GameScene extends Phaser.Scene {
                 });
             }
         });
-    }
-
-    shootArrow(pointer) {
-        let arrow = this.arrows.create(this.patron.x, this.patron.y, 'arrow');
-        if (!arrow) return;
-
-        arrow.setScale(0.15);
-        let angle = Phaser.Math.Angle.Between(this.patron.x, this.patron.y, pointer.x, pointer.y);
-        arrow.setRotation(angle);
-
-        this.physics.velocityFromRotation(angle, 900, arrow.body.velocity);
-    }
-
-    spawnZombie() {
-        if (this.isGameOver || this.isWin || this.isPaused) return;
-
-        let spawnY = Phaser.Math.Between(150, 620);
-        let zombie = this.zombies.create(1300, spawnY, 'zombie');
-        if (!zombie) return;
-
-        zombie.setScale(0.2);
-        zombie.setVelocityX(-160);
-
-        // Спавн яблук із шансом 10%
-        if (Math.random() < 0.1) {
-            this.spawnApple();
-        }
-    }
-
-    spawnApple() {
-        let spawnY = Phaser.Math.Between(150, 620);
-        let apple = this.apples.create(1300, spawnY, 'apple');
-        if (!apple) return;
-
-        apple.setScale(0.12);
-        apple.setVelocityX(-120);
-    }
-
-    hitZombie(arrow, zombie) {
-        if (!arrow.active || !zombie.active || zombie.isDying) return;
-
-        arrow.destroy();
-        zombie.isDying = true;
-
-        if (this.pigSound) {
-            this.pigSound.play();
-        }
-
-        this.score += 10;
-        this.scoreText.setText(`Очки: ${this.score} / 1488`);
-
-        this.tweens.add({
-            targets: zombie,
-            alpha: 0,
-            scale: 0,
-            duration: 200,
-            onComplete: () => {
-                zombie.destroy();
-            }
-        });
-
-        if (this.score >= 1488) {
-            this.triggerWin();
-        }
-    }
-
-    collectApple(arrow, apple) {
-        arrow.destroy();
-        apple.destroy();
-
-        if (this.lives < 5) {
-            this.hearts[this.lives].setVisible(true);
-            this.lives++;
-        }
-    }
-
-    playRandomTrack() {
-        let trackKey = Phaser.Utils.Array.GetRandom(this.tracksList);
-        this.currentTrack = this.sound.add(trackKey, { volume: 0.4, loop: false });
-        this.currentTrack.play();
-        
-        this.currentTrack.once('complete', () => {
-            if (!this.isGameOver && !this.isWin) {
-                this.playRandomTrack();
-            }
-        });
-    }
-
-    stopAllMusic() {
-        if (this.currentTrack) this.currentTrack.stop();
-        if (this.specialTrack) this.specialTrack.stop();
     }
 
     showExitConfirmModal() {
@@ -982,60 +907,201 @@ class GameScene extends Phaser.Scene {
             fill: '#ffffff'
         }).setOrigin(0.5).setDepth(1001);
 
-        let retryBtn = this.add.text(640, 390, 'ПОВТОРИТИ ЗНОВУ', {
+        let retryText = this.add.text(640, 390, 'ПОВТОРИТИ ЗНОВУ', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '24px',
             fill: '#ffffff',
             backgroundColor: '#4a3b22',
-            padding: { x: 20, y: 10 }
+            padding: { x: 20, y: 12 }
         }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1001);
 
-        let menuBtn = this.add.text(640, 470, 'В ГОЛОВНЕ МЕНЮ', {
+        let countdown = 10;
+        let timerText = this.add.text(640, 480, `ПОВЕРНЕННЯ ДО МЕНЮ ЧЕРЕЗ: ${countdown}`, {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '20px',
-            fill: '#ffffff',
-            backgroundColor: '#362714',
-            padding: { x: 20, y: 10 }
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1001);
+            fontSize: '18px',
+            fill: '#cccccc'
+        }).setOrigin(0.5).setDepth(1001);
 
-        retryBtn.on('pointerover', () => retryBtn.setStyle({ fill: '#ffcc00', backgroundColor: '#332714' }));
-        retryBtn.on('pointerout', () => retryBtn.setStyle({ fill: '#ffffff', backgroundColor: '#4a3b22' }));
-        retryBtn.on('pointerdown', () => {
+        this.winTimerEvent = this.time.addEvent({
+            delay: 1000,
+            callback: () => {
+                countdown--;
+                timerText.setText(`ПОВЕРНЕННЯ ДО МЕНЮ ЧЕРЕЗ: ${countdown}`);
+                if (countdown <= 0) {
+                    this.stopAllMusic();
+                    this.scene.start('MenuScene');
+                }
+            },
+            callbackScope: this,
+            loop: true
+        });
+
+        retryText.on('pointerover', () => retryText.setStyle({ fill: '#ffcc00', backgroundColor: '#332714' }));
+        retryText.on('pointerout', () => retryText.setStyle({ fill: '#ffffff', backgroundColor: '#4a3b22' }));
+
+        retryText.on('pointerdown', () => {
+            if (this.winTimerEvent) this.winTimerEvent.remove();
             this.stopAllMusic();
             this.scene.restart();
         });
+    }
 
-        menuBtn.on('pointerover', () => menuBtn.setStyle({ fill: '#ffcc00', backgroundColor: '#543e20' }));
-        menuBtn.on('pointerout', () => menuBtn.setStyle({ fill: '#ffffff', backgroundColor: '#362714' }));
-        menuBtn.on('pointerdown', () => {
-            this.stopAllMusic();
-            this.scene.start('MenuScene');
+    stopAllMusic() {
+        if (this.currentTrack) {
+            this.currentTrack.stop();
+            this.currentTrack.destroy();
+            this.currentTrack = null;
+        }
+        if (this.specialTrack) {
+            this.specialTrack.stop();
+            this.specialTrack.destroy();
+            this.specialTrack = null;
+        }
+    }
+
+    playRandomTrack() {
+        let randomIndex = Phaser.Math.Between(0, this.tracksList.length - 1);
+        let selectedKey = this.tracksList[randomIndex];
+
+        if (!this.cache.audio.exists(selectedKey)) {
+            selectedKey = 'music_main';
+        }
+
+        this.currentTrack = this.sound.add(selectedKey, { volume: 0.5 });
+
+        this.currentTrack.once('complete', () => {
+            if (!this.isGameOver && !this.isWin) {
+                this.playRandomTrack();
+            }
         });
+
+        this.currentTrack.play();
+    }
+
+    shootArrow(pointer) {
+        let arrow = this.arrows.create(this.patron.x, this.patron.y, 'arrow');
+        arrow.setScale(0.12);
+        arrow.setDepth(11);
+        
+        let angle = Phaser.Math.Angle.Between(this.patron.x, this.patron.y, pointer.x, pointer.y);
+        arrow.rotation = angle;
+        
+        this.physics.velocityFromRotation(angle, 700, arrow.body.velocity);
+    }
+
+    spawnZombie() {
+        if (this.isGameOver || this.isWin || this.isPaused) return;
+
+        let groundY = Phaser.Math.Between(600, 690);
+        let startX = Phaser.Math.Between(1310, 1370);
+
+        let zombie = this.zombies.create(startX, groundY, 'zombie');
+        zombie.setOrigin(0.5, 1);
+        zombie.setDepth(Math.floor(groundY));
+
+        let typeRoll = Phaser.Math.Between(1, 100);
+        let speed, scale, hp, reward;
+
+        if (typeRoll <= 25) {
+            scale = 0.45;
+            speed = Phaser.Math.Between(-210, -160);
+            hp = 1;
+            reward = 30;
+        } else if (typeRoll <= 40) {
+            scale = 0.85;
+            speed = Phaser.Math.Between(-80, -50);
+            hp = 2;
+            reward = 100;
+        } else {
+            scale = 0.65;
+            speed = Phaser.Math.Between(-130, -90);
+            hp = 1;
+            reward = 30;
+        }
+
+        zombie.setScale(scale);
+        zombie.setVelocityX(speed);
+        
+        zombie.hp = hp;
+        zombie.reward = reward;
+    }
+
+    hitZombie(arrow, zombie) {
+        if (arrow.active && zombie.active && !zombie.isDying) {
+            arrow.destroy();
+
+            zombie.hp -= 1;
+
+            zombie.setTint(0xff0000);
+            this.time.delayedCall(100, () => {
+                if (zombie && zombie.active) {
+                    zombie.clearTint();
+                }
+            });
+
+            if (zombie.hp <= 0) {
+                let deathX = zombie.x;
+                let startY = zombie.y - (zombie.height * zombie.scaleY * 0.5); 
+                let groundY = zombie.y - 10; 
+                let earnedPoints = zombie.reward || 30;
+                let currentDepth = zombie.depth;
+
+                zombie.destroy();
+
+                if (this.pigSound) {
+                    this.pigSound.play();
+                }
+
+                let apple = this.add.image(deathX, startY, 'apple');
+                apple.setScale(0.08);
+                apple.setDepth(currentDepth);
+
+                this.tweens.add({
+                    targets: apple,
+                    y: groundY,
+                    duration: 400,
+                    ease: 'Bounce.easeOut',
+                    onComplete: () => {
+                        this.tweens.add({
+                            targets: apple,
+                            alpha: 0,
+                            duration: 1000,
+                            delay: 600,
+                            onComplete: () => {
+                                apple.destroy();
+                            }
+                        });
+                    }
+                });
+                
+                this.score += earnedPoints;
+                this.scoreText.setText('Очки: ' + this.score + ' / 1488');
+
+                if (this.score >= 1488 && !this.isWin) {
+                    this.triggerWin();
+                }
+            }
+        }
     }
 }
 
-// -------------------------------------------------------------------
-// 6. ІНІЦІАЛІЗАЦІЯ PHASER GAME
-// -------------------------------------------------------------------
 const config = {
     type: Phaser.AUTO,
-    width: 1280,
-    height: 720,
     scale: {
         mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: 1280,
+        height: 720
     },
     physics: {
         default: 'arcade',
-        arcade: {
-            gravity: { y: 0 },
-            debug: false
-        }
+        arcade: { debug: false }
     },
     scene: [PreloaderScene, MenuScene, SettingsScene, HighscoresScene, LevelSelectScene, GameScene]
 };
 
 const game = new Phaser.Game(config);
 </script>
+
 </body>
 </html>
