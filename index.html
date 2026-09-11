@@ -47,7 +47,7 @@ function createGrainTexture(scene) {
 }
 
 function formatTime(seconds) {
-    if (!seconds || seconds === Infinity) return '--:--';
+    if (seconds === undefined || seconds === null || seconds === Infinity || isNaN(seconds)) return '00:00';
     let mins = Math.floor(seconds / 60);
     let secs = Math.floor(seconds % 60);
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
@@ -91,7 +91,7 @@ class PreloaderScene extends Phaser.Scene {
         this.load.audio('sorry', 'assets/sorry.mp3');
         this.load.audio('wagners', 'assets/wagners.mp3');
         this.load.audio('invincible', 'assets/invincible.mp3');
-        this.load.audio('game_over', 'assets/game_over.mp3'); // Звук програшу
+        this.load.audio('game_over', 'assets/game_over.mp3');
     }
 
     create() {
@@ -119,7 +119,6 @@ class MenuScene extends Phaser.Scene {
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
         grain.setAlpha(0.25);
 
-        // Тінь заголовку
         this.add.text(644, 114, 'ПЕС ПАТРОН vs ПРИГОЖИН', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '38px',
@@ -127,7 +126,6 @@ class MenuScene extends Phaser.Scene {
             align: 'center'
         }).setOrigin(0.5).setAlpha(0.7);
 
-        // Основний заголовок
         this.add.text(640, 110, 'ПЕС ПАТРОН vs ПРИГОЖИН', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '38px',
@@ -137,7 +135,6 @@ class MenuScene extends Phaser.Scene {
             align: 'center'
         }).setOrigin(0.5);
 
-        // Підзаголовок
         this.add.text(640, 168, '🐾 ГРА ПРО ХОРОБРОГО ПСА 🐾', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '16px',
@@ -175,7 +172,6 @@ class MenuScene extends Phaser.Scene {
     }
 
     createPixelMenuButton(x, y, textLabel, callback) {
-        // Звужені плашки (280px замість 440px), щоб не перекривати пса Патрона
         let btnWidth = 280;
         let btnHeight = 54;
 
@@ -470,12 +466,17 @@ class GameScene extends Phaser.Scene {
         this.score = 0;
         this.lives = 5;
         this.hearts = [];
+        
+        // Захист від затискання / частого кліку
         this.lastFired = 0;
+        this.fireRateDelay = 250; // Мінімальна затримка між пострілами (250 мс)
+
+        // Секундомір строго з 0 з моменту запуску рівня
+        this.elapsedSeconds = 0;
+
         this.currentTrack = null;
         this.specialTrack = null;
         this.winTimerEvent = null;
-
-        this.startTime = this.time.now;
 
         this.input.mouse.disableContextMenu();
 
@@ -510,6 +511,19 @@ class GameScene extends Phaser.Scene {
             fontSize: '16px',
             fill: '#ffe57f'
         }).setDepth(100);
+
+        // Посекундний таймер
+        this.levelTimerEvent = this.time.addEvent({
+            delay: 1000,
+            callback: () => {
+                if (!this.isPaused && !this.isGameOver && !this.isWin) {
+                    this.elapsedSeconds++;
+                    this.timerText.setText('Час: ' + formatTime(this.elapsedSeconds));
+                }
+            },
+            callbackScope: this,
+            loop: true
+        });
 
         for (let i = 0; i < 5; i++) {
             let heart = this.add.image(1280 - 60 - (i * 65), 55, 'heart');
@@ -637,13 +651,14 @@ class GameScene extends Phaser.Scene {
         this.tracksList = ['music_main', 'stefania', 'donbass', 'sorry', 'wagners'];
         this.playRandomTrack();
 
+        // Постріл тільки при КЛІКУ, а не при затисканні
         this.input.on('pointerdown', (pointer) => {
             if (this.isGameOver || this.isWin || this.isPaused) return;
-            
-            let time = this.time.now;
-            if (time > this.lastFired) {
+
+            let now = this.time.now;
+            if (now - this.lastFired >= this.fireRateDelay) {
                 this.shootArrow(pointer);
-                this.lastFired = time + 300;
+                this.lastFired = now;
             }
         });
 
@@ -662,9 +677,6 @@ class GameScene extends Phaser.Scene {
 
     update() {
         if (this.isGameOver || this.isWin || this.isPaused) return;
-
-        let elapsed = (this.time.now - this.startTime) / 1000;
-        this.timerText.setText('Час: ' + formatTime(elapsed));
 
         let pointer = this.input.activePointer;
         if (pointer) {
@@ -770,18 +782,16 @@ class GameScene extends Phaser.Scene {
         this.isGameOver = true;
         
         if (this.zombieSpawnTimer) this.zombieSpawnTimer.remove();
+        if (this.levelTimerEvent) this.levelTimerEvent.remove();
         this.physics.pause();
 
-        // Зупиняємо (ставуємо на паузу) поточну фонову музику
         if (this.currentTrack && this.currentTrack.isPlaying) {
             this.currentTrack.pause();
         }
 
-        // Вмикаємо музику програшу (game_over)
         this.specialTrack = this.sound.add('game_over', { volume: 0.7 });
         this.specialTrack.play();
 
-        // Коли музика програшу закінчиться — відновлюємо фонову трек
         this.specialTrack.once('complete', () => {
             if (this.currentTrack && this.currentTrack.isPaused) {
                 this.currentTrack.resume();
@@ -817,7 +827,7 @@ class GameScene extends Phaser.Scene {
     triggerWin() {
         this.isWin = true;
 
-        let completionTime = (this.time.now - this.startTime) / 1000;
+        let completionTime = this.elapsedSeconds;
         let bestTime = localStorage.getItem('patron_best_time');
 
         if (!bestTime || completionTime < parseFloat(bestTime)) {
@@ -828,18 +838,16 @@ class GameScene extends Phaser.Scene {
         localStorage.setItem('patron_wins_count', wins);
 
         if (this.zombieSpawnTimer) this.zombieSpawnTimer.remove();
+        if (this.levelTimerEvent) this.levelTimerEvent.remove();
         this.physics.pause();
 
-        // Ставимо на паузу фонову музику
         if (this.currentTrack && this.currentTrack.isPlaying) {
             this.currentTrack.pause();
         }
 
-        // Вмикаємо трек перемоги (invincible)
         this.specialTrack = this.sound.add('invincible', { volume: 0.7 });
         this.specialTrack.play();
 
-        // Після завершення переможного звуку повертаємо фоновий трек
         this.specialTrack.once('complete', () => {
             if (this.currentTrack && this.currentTrack.isPaused) {
                 this.currentTrack.resume();
