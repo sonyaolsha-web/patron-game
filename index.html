@@ -879,26 +879,43 @@ class GameScene extends Phaser.Scene {
         let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65);
         overlay.setDepth(1000);
 
-        this.add.text(640, 300, 'ГРУ ЗАКІНЧЕНО', {
+        this.add.text(640, 240, 'ГРУ ЗАКІНЧЕНО', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '44px',
             fill: '#ffffff',
             align: 'center'
         }).setOrigin(0.5).setDepth(1001);
 
-        let restartText = this.add.text(640, 400, 'ПОЧАТИ ЗНОВУ', {
+        // Кнопка 1: Почати знову
+        let restartText = this.add.text(640, 350, 'ПОЧАТИ ЗНОВУ', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '26px',
+            fontSize: '22px',
             fill: '#ffffff',
-            align: 'center'
+            backgroundColor: '#4a3b22',
+            padding: { x: 25, y: 12 }
         }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1001);
 
-        restartText.on('pointerover', () => restartText.setStyle({ fill: '#ffcc00' }));
-        restartText.on('pointerout', () => restartText.setStyle({ fill: '#ffffff' }));
-
+        restartText.on('pointerover', () => restartText.setStyle({ fill: '#ffcc00', backgroundColor: '#332714' }));
+        restartText.on('pointerout', () => restartText.setStyle({ fill: '#ffffff', backgroundColor: '#4a3b22' }));
         restartText.on('pointerdown', () => {
             this.stopAllMusic();
             this.scene.restart();
+        });
+
+        // Кнопка 2: Повернутись в меню
+        let menuText = this.add.text(640, 440, 'ПОВЕРНУТИСЬ В МЕНЮ', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '22px',
+            fill: '#ffffff',
+            backgroundColor: '#362714',
+            padding: { x: 25, y: 12 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1001);
+
+        menuText.on('pointerover', () => menuText.setStyle({ fill: '#ffcc00', backgroundColor: '#543e20' }));
+        menuText.on('pointerout', () => menuText.setStyle({ fill: '#ffffff', backgroundColor: '#362714' }));
+        menuText.on('pointerdown', () => {
+            this.stopAllMusic();
+            this.scene.start('MenuScene');
         });
     }
 
