@@ -53,6 +53,22 @@ function formatTime(seconds) {
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
+// Менеджер фонової музики меню (глобальний для меню-сцен)
+function playMenuMusic(scene) {
+    if (!scene.game.menuMusic) {
+        scene.game.menuMusic = scene.sound.add('menu_music', { volume: 0.5, loop: true });
+    }
+    if (!scene.game.menuMusic.isPlaying) {
+        scene.game.menuMusic.play();
+    }
+}
+
+function stopMenuMusic(scene) {
+    if (scene.game.menuMusic && scene.game.menuMusic.isPlaying) {
+        scene.game.menuMusic.stop();
+    }
+}
+
 // -------------------------------------------------------------------
 // 0. СЦЕНА ПОПЕРЕДНЬОГО ЗАВАНТАЖЕННЯ
 // -------------------------------------------------------------------
@@ -84,6 +100,7 @@ class PreloaderScene extends Phaser.Scene {
         this.load.image('btn_sound_off', 'assets/btn_sound_off.png');
         this.load.image('btn_back', 'assets/btn_back.png');
 
+        this.load.audio('menu_music', 'assets/menu_music.mp3'); // Музика меню
         this.load.audio('pig_sound', 'assets/pig.mp3');
         this.load.audio('music_main', 'assets/music_main.mp3');
         this.load.audio('stefania', 'assets/stefania.mp3');
@@ -108,6 +125,8 @@ class MenuScene extends Phaser.Scene {
     }
 
     create() {
+        playMenuMusic(this);
+
         if (this.textures.exists('menu_bg')) {
             let bg = this.add.image(640, 360, 'menu_bg');
             bg.setDisplaySize(1280, 720);
@@ -216,6 +235,8 @@ class SettingsScene extends Phaser.Scene {
     }
 
     create() {
+        playMenuMusic(this);
+
         if (this.textures.exists('menu_bg')) {
             let bg = this.add.image(640, 360, 'menu_bg');
             bg.setDisplaySize(1280, 720);
@@ -271,9 +292,10 @@ class SettingsScene extends Phaser.Scene {
             fill: '#e6ca94'
         }).setOrigin(0, 0.5);
 
-        this.soundBtn = this.createOptionButton(800, 340, this.sound.mute ? 'ВИМК' : 'УВІМК', () => {
+        // Виправлена кнопка перемикання звуку
+        this.soundBtnText = this.createOptionButton(800, 340, this.sound.mute ? 'ВИМК' : 'УВІМК', () => {
             this.sound.mute = !this.sound.mute;
-            this.soundBtn.setText(this.sound.mute ? 'ВИМК' : 'УВІМК');
+            this.soundBtnText.setText(this.sound.mute ? 'ВИМК' : 'УВІМК');
         });
 
         this.add.text(320, 420, 'ПОВНИЙ ЕКРАН:', {
@@ -283,13 +305,13 @@ class SettingsScene extends Phaser.Scene {
         }).setOrigin(0, 0.5);
 
         let isFS = this.scale.isFullscreen;
-        this.fsBtn = this.createOptionButton(800, 420, isFS ? 'УВІМК' : 'ВИМК', () => {
+        this.fsBtnText = this.createOptionButton(800, 420, isFS ? 'УВІМК' : 'ВИМК', () => {
             if (this.scale.isFullscreen) {
                 this.scale.stopFullscreen();
-                this.fsBtn.setText('ВИМК');
+                this.fsBtnText.setText('ВИМК');
             } else {
                 this.scale.startFullscreen();
-                this.fsBtn.setText('УВІМК');
+                this.fsBtnText.setText('УВІМК');
             }
         });
 
@@ -335,7 +357,6 @@ class SettingsScene extends Phaser.Scene {
         });
         bg.on('pointerdown', callback);
 
-        txt.setText = (newText) => txt.setText(newText);
         return txt;
     }
 }
@@ -349,6 +370,8 @@ class HighscoresScene extends Phaser.Scene {
     }
 
     create() {
+        playMenuMusic(this);
+
         if (this.textures.exists('menu_bg')) {
             let bg = this.add.image(640, 360, 'menu_bg');
             bg.setDisplaySize(1280, 720);
@@ -416,6 +439,8 @@ class LevelSelectScene extends Phaser.Scene {
     }
 
     create() {
+        playMenuMusic(this);
+
         if (this.textures.exists('menu_bg')) {
             let bg = this.add.image(640, 360, 'menu_bg');
             bg.setDisplaySize(1280, 720);
@@ -446,6 +471,7 @@ class LevelSelectScene extends Phaser.Scene {
         lvl1Btn.on('pointerout', () => lvl1Btn.setStyle({ fill: '#ffffff', backgroundColor: '#4a3b22' }));
 
         lvl1Btn.on('pointerdown', () => {
+            stopMenuMusic(this);
             this.scene.start('GameScene');
         });
     }
@@ -460,6 +486,8 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
+        stopMenuMusic(this);
+
         this.isGameOver = false;
         this.isWin = false;
         this.isPaused = false;
@@ -467,11 +495,8 @@ class GameScene extends Phaser.Scene {
         this.lives = 5;
         this.hearts = [];
         
-        // Захист від затискання / частого кліку
         this.lastFired = 0;
-        this.fireRateDelay = 250; // Мінімальна затримка між пострілами (250 мс)
-
-        // Секундомір строго з 0 з моменту запуску рівня
+        this.fireRateDelay = 250; 
         this.elapsedSeconds = 0;
 
         this.currentTrack = null;
@@ -512,7 +537,6 @@ class GameScene extends Phaser.Scene {
             fill: '#ffe57f'
         }).setDepth(100);
 
-        // Посекундний таймер
         this.levelTimerEvent = this.time.addEvent({
             delay: 1000,
             callback: () => {
@@ -578,8 +602,9 @@ class GameScene extends Phaser.Scene {
             padding: { x: 20, y: 10 }
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
+        // Функціональна кнопка ЗВУК у вікні Паузи
         this.muteBtn.on('pointerdown', (p, x, y, e) => {
-            e.stopPropagation();
+            if (e) e.stopPropagation();
             this.toggleSound();
         });
 
@@ -651,7 +676,6 @@ class GameScene extends Phaser.Scene {
         this.tracksList = ['music_main', 'stefania', 'donbass', 'sorry', 'wagners'];
         this.playRandomTrack();
 
-        // Постріл тільки при КЛІКУ, а не при затисканні
         this.input.on('pointerdown', (pointer) => {
             if (this.isGameOver || this.isWin || this.isPaused) return;
 
