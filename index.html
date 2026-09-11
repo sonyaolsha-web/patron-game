@@ -92,20 +92,20 @@ function stopMenuMusic(scene) {
     }
 }
 
-// Допоміжна функція створення Pixel-Art плашок з чорним контуром
-function createPixelBox(scene, x, y, width, height, bgColor = 0x2b1e10, borderColor = 0x000000) {
+// Єдина уніфікована плашка у напівпрозорому піксельному стилі
+function createPixelBox(scene, x, y, width, height, alpha = 0.88) {
     let container = scene.add.container(x, y);
 
-    let outerBorder = scene.add.rectangle(0, 0, width, height, borderColor);
-    let innerBg = scene.add.rectangle(0, 0, width - 8, height - 8, bgColor);
-    let innerFrame = scene.add.rectangle(0, 0, width - 14, height - 14, 0x000000).setStrokeStyle(2, 0x8c6f3e);
+    let outerBorder = scene.add.rectangle(0, 0, width, height, 0x000000);
+    let innerBg = scene.add.rectangle(0, 0, width - 8, height - 8, 0x1a120a, alpha);
+    let innerFrame = scene.add.rectangle(0, 0, width - 14, height - 14, 0x000000, 0).setStrokeStyle(2, 0x8c6f3e);
 
     container.add([outerBorder, innerBg, innerFrame]);
     return container;
 }
 
 // -------------------------------------------------------------------
-// 16-БІТНА СИСТЕМА АЧІВОК (PIXEL-ART)
+// АЧІВКИ
 // -------------------------------------------------------------------
 function showAchievement(scene, title, description) {
     if (!scene.achievementsUnlocked) scene.achievementsUnlocked = {};
@@ -120,8 +120,7 @@ function showAchievement(scene, title, description) {
     let container = scene.add.container(x, y).setDepth(2000);
 
     let border = scene.add.rectangle(width/2, height/2, width, height, 0x000000);
-    let bg = scene.add.rectangle(width/2, height/2, width - 6, height - 6, 0x2b1e10).setStrokeStyle(2, 0xffe57f);
-
+    let bg = scene.add.rectangle(width/2, height/2, width - 6, height - 6, 0x1a120a, 0.95).setStrokeStyle(2, 0xffe57f);
     let icon = scene.add.text(20, height/2, '🏆', { fontSize: '20px' }).setOrigin(0.5);
 
     let titleTxt = scene.add.text(45, 14, title.toUpperCase(), {
@@ -205,7 +204,7 @@ class PreloaderScene extends Phaser.Scene {
 }
 
 // -------------------------------------------------------------------
-// 1. MENU SCENE (ГОЛОВНЕ МЕНЮ)
+// 1. MENU SCENE
 // -------------------------------------------------------------------
 class MenuScene extends Phaser.Scene {
     constructor() {
@@ -224,24 +223,24 @@ class MenuScene extends Phaser.Scene {
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
         grain.setAlpha(0.25);
 
-        this.add.text(642, 132, 'ПЕС ПАТРОН vs ПРИГОЖИН', {
+        // Повернено великий розмір заголовку
+        this.add.text(644, 134, 'ПЕС ПАТРОН vs ПРИГОЖИН', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '22px',
+            fontSize: '32px',
             fill: '#000000'
         }).setOrigin(0.5);
 
         this.add.text(640, 130, 'ПЕС ПАТРОН vs ПРИГОЖИН', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '22px',
+            fontSize: '32px',
             fill: '#ffe57f',
             stroke: '#140c03',
-            strokeThickness: 6
+            strokeThickness: 8
         }).setOrigin(0.5);
 
-        // Чистий початковий текст без "ПОТУЖНО"
-        this.add.text(640, 175, 'ГРА ПРО ХОРОБРОГО ПСА', {
+        this.add.text(640, 185, 'ГРА ПРО ХОРОБРОГО ПСА', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '14px',
+            fontSize: '15px',
             fill: '#fff3cd',
             stroke: '#1a0d03',
             strokeThickness: 4
@@ -265,14 +264,13 @@ class MenuScene extends Phaser.Scene {
     }
 
     createPixelMenuButton(x, y, textLabel, callback) {
-        let btnWidth = 270;
-        let btnHeight = 50;
+        let btnWidth = 280;
+        let btnHeight = 52;
         let container = this.add.container(x, y);
 
-        // Pixel-art контур
         let outerBorder = this.add.rectangle(0, 0, btnWidth, btnHeight, 0x000000);
-        let innerBg = this.add.rectangle(0, 0, btnWidth - 6, btnHeight - 6, 0x362714);
-        let innerBorder = this.add.rectangle(0, 0, btnWidth - 12, btnHeight - 12, 0x1f1408).setStrokeStyle(2, 0x8c6f3e);
+        let innerBg = this.add.rectangle(0, 0, btnWidth - 6, btnHeight - 6, 0x1a120a, 0.88);
+        let innerBorder = this.add.rectangle(0, 0, btnWidth - 12, btnHeight - 12, 0x000000, 0).setStrokeStyle(2, 0x8c6f3e);
 
         let label = this.add.text(0, 0, textLabel, {
             fontFamily: '"Press Start 2P", monospace',
@@ -284,13 +282,13 @@ class MenuScene extends Phaser.Scene {
         innerBg.setInteractive({ useHandCursor: true });
 
         innerBg.on('pointerover', () => {
-            innerBg.setFillStyle(0x543e20);
+            innerBg.setFillStyle(0x362714, 0.95);
             innerBorder.setStrokeStyle(2, 0xffe57f);
             label.setStyle({ fill: '#ffffff' });
         });
 
         innerBg.on('pointerout', () => {
-            innerBg.setFillStyle(0x362714);
+            innerBg.setFillStyle(0x1a120a, 0.88);
             innerBorder.setStrokeStyle(2, 0x8c6f3e);
             label.setStyle({ fill: '#e6ca94' });
         });
@@ -300,7 +298,7 @@ class MenuScene extends Phaser.Scene {
 }
 
 // -------------------------------------------------------------------
-// 2. SETTINGS SCENE (НАЛАШТУВАННЯ)
+// 2. SETTINGS SCENE
 // -------------------------------------------------------------------
 class SettingsScene extends Phaser.Scene {
     constructor() {
@@ -320,8 +318,7 @@ class SettingsScene extends Phaser.Scene {
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
         grain.setAlpha(0.25);
 
-        // Pixel-Art плашка
-        createPixelBox(this, 640, 360, 720, 460, 0x1a120a, 0x000000);
+        createPixelBox(this, 640, 360, 720, 460);
 
         this.add.text(640, 180, 'НАЛАШТУВАННЯ', {
             fontFamily: '"Press Start 2P", monospace',
@@ -391,7 +388,7 @@ class SettingsScene extends Phaser.Scene {
     createPixelSmallButton(x, y, text, callback) {
         let container = this.add.container(x, y);
         let border = this.add.rectangle(0, 0, 40, 40, 0x000000);
-        let bg = this.add.rectangle(0, 0, 34, 34, 0x362714).setStrokeStyle(2, 0x8c6f3e);
+        let bg = this.add.rectangle(0, 0, 34, 34, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
         let txt = this.add.text(0, 0, text, {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '18px',
@@ -401,15 +398,15 @@ class SettingsScene extends Phaser.Scene {
         container.add([border, bg, txt]);
         bg.setInteractive({ useHandCursor: true });
 
-        bg.on('pointerover', () => { bg.setFillStyle(0x543e20); txt.setStyle({ fill: '#ffe57f' }); });
-        bg.on('pointerout', () => { bg.setFillStyle(0x362714); txt.setStyle({ fill: '#ffffff' }); });
+        bg.on('pointerover', () => { bg.setFillStyle(0x362714, 0.95); txt.setStyle({ fill: '#ffe57f' }); });
+        bg.on('pointerout', () => { bg.setFillStyle(0x1a120a, 0.88); txt.setStyle({ fill: '#ffffff' }); });
         bg.on('pointerdown', callback);
     }
 
     createPixelOptionButton(x, y, text, callback, width = 160) {
         let container = this.add.container(x, y);
         let border = this.add.rectangle(0, 0, width, 44, 0x000000);
-        let bg = this.add.rectangle(0, 0, width - 6, 38, 0x362714).setStrokeStyle(2, 0x8c6f3e);
+        let bg = this.add.rectangle(0, 0, width - 6, 38, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
         let txt = this.add.text(0, 0, text, {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '12px',
@@ -420,11 +417,11 @@ class SettingsScene extends Phaser.Scene {
         bg.setInteractive({ useHandCursor: true });
 
         bg.on('pointerover', () => {
-            bg.setFillStyle(0x543e20);
+            bg.setFillStyle(0x362714, 0.95);
             bg.setStrokeStyle(2, 0xffe57f);
         });
         bg.on('pointerout', () => {
-            bg.setFillStyle(0x362714);
+            bg.setFillStyle(0x1a120a, 0.88);
             bg.setStrokeStyle(2, 0x8c6f3e);
         });
         bg.on('pointerdown', callback);
@@ -454,7 +451,7 @@ class HighscoresScene extends Phaser.Scene {
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
         grain.setAlpha(0.25);
 
-        createPixelBox(this, 640, 360, 750, 440, 0x1a120a, 0x000000);
+        createPixelBox(this, 640, 360, 750, 440);
 
         this.add.text(640, 180, 'ТАБЛИЦЯ РЕКОРДІВ', {
             fontFamily: '"Press Start 2P", monospace',
@@ -486,7 +483,7 @@ class HighscoresScene extends Phaser.Scene {
 
         let backBtnContainer = this.add.container(640, 490);
         let border = this.add.rectangle(0, 0, 280, 46, 0x000000);
-        let bg = this.add.rectangle(0, 0, 274, 40, 0x362714).setStrokeStyle(2, 0x8c6f3e);
+        let bg = this.add.rectangle(0, 0, 274, 40, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
         let txt = this.add.text(0, 0, 'ПОВЕРНУТИСЯ В МЕНЮ', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '12px',
@@ -496,14 +493,14 @@ class HighscoresScene extends Phaser.Scene {
         backBtnContainer.add([border, bg, txt]);
         bg.setInteractive({ useHandCursor: true });
 
-        bg.on('pointerover', () => { bg.setFillStyle(0x543e20); txt.setStyle({ fill: '#ffe57f' }); });
-        bg.on('pointerout', () => { bg.setFillStyle(0x362714); txt.setStyle({ fill: '#ffffff' }); });
+        bg.on('pointerover', () => { bg.setFillStyle(0x362714, 0.95); txt.setStyle({ fill: '#ffe57f' }); });
+        bg.on('pointerout', () => { bg.setFillStyle(0x1a120a, 0.88); txt.setStyle({ fill: '#ffffff' }); });
         bg.on('pointerdown', () => this.scene.start('MenuScene'));
     }
 }
 
 // -------------------------------------------------------------------
-// 4. LEVEL SELECT SCENE (ВИБІР РІВНЮ)
+// 4. LEVEL SELECT SCENE
 // -------------------------------------------------------------------
 class LevelSelectScene extends Phaser.Scene {
     constructor() {
@@ -515,7 +512,6 @@ class LevelSelectScene extends Phaser.Scene {
     create() {
         playMenuMusic(this);
 
-        // Прикріплений піксельний арт як фон
         if (this.textures.exists('menu_bg')) {
             let bg = this.add.image(640, 360, 'menu_bg');
             bg.setDisplaySize(1280, 720);
@@ -526,33 +522,34 @@ class LevelSelectScene extends Phaser.Scene {
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
         grain.setAlpha(0.25);
 
-        this.add.text(640, 130, 'ВИБІР РІВНЯ', {
+        this.add.text(640, 120, 'ВИБІР РІВНЯ', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '22px',
+            fontSize: '26px',
             fill: '#ffe57f',
             stroke: '#000000',
             strokeThickness: 6
         }).setOrigin(0.5);
 
-        createPixelBox(this, 640, 360, 460, 260, 0x1a120a, 0x000000);
+        // Центральна плашка у співвідношенні 1:1 відносно вмісту
+        createPixelBox(this, 640, 360, 380, 280);
 
-        this.levelTitleText = this.add.text(640, 290, '', {
+        this.levelTitleText = this.add.text(640, 275, '', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '20px',
             fill: '#ffffff'
         }).setOrigin(0.5);
 
-        this.levelDescText = this.add.text(640, 345, '', {
+        this.levelDescText = this.add.text(640, 335, '', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '12px',
             fill: '#e6ca94',
             align: 'center'
         }).setOrigin(0.5);
 
-        // Кнопка Старт Рівня
+        // Кнопка Старт
         this.startLevelContainer = this.add.container(640, 420);
         let sBorder = this.add.rectangle(0, 0, 180, 44, 0x000000);
-        let sBg = this.add.rectangle(0, 0, 174, 38, 0x362714).setStrokeStyle(2, 0x8c6f3e);
+        let sBg = this.add.rectangle(0, 0, 174, 38, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
         let sTxt = this.add.text(0, 0, 'ПОЧАТИ', {
             fontFamily: '"Press Start 2P", monospace', fontSize: '14px', fill: '#ffffff'
         }).setOrigin(0.5);
@@ -560,8 +557,8 @@ class LevelSelectScene extends Phaser.Scene {
         this.startLevelContainer.add([sBorder, sBg, sTxt]);
         sBg.setInteractive({ useHandCursor: true });
 
-        sBg.on('pointerover', () => { sBg.setFillStyle(0x543e20); sTxt.setStyle({ fill: '#ffe57f' }); });
-        sBg.on('pointerout', () => { sBg.setFillStyle(0x362714); sTxt.setStyle({ fill: '#ffffff' }); });
+        sBg.on('pointerover', () => { sBg.setFillStyle(0x362714, 0.95); sTxt.setStyle({ fill: '#ffe57f' }); });
+        sBg.on('pointerout', () => { sBg.setFillStyle(0x1a120a, 0.88); sTxt.setStyle({ fill: '#ffffff' }); });
         sBg.on('pointerdown', () => {
             if (this.currentSelectedLevel === 1) {
                 stopMenuMusic(this);
@@ -569,15 +566,15 @@ class LevelSelectScene extends Phaser.Scene {
             }
         });
 
-        // Піксельні стрілочки перемикання рівнів
-        this.createPixelArrow(160, 360, '◄', () => {
+        // Строго КВАДРАТНІ СТРІЛКИ (Співвідношення 1:1, 64x64px)
+        this.createSquarePixelArrow(370, 360, '◄', () => {
             if (this.currentSelectedLevel > 1) {
                 this.currentSelectedLevel--;
                 this.updateLevelDisplay();
             }
         });
 
-        this.createPixelArrow(1120, 360, '►', () => {
+        this.createSquarePixelArrow(910, 360, '►', () => {
             if (this.currentSelectedLevel < this.maxLevels) {
                 this.currentSelectedLevel++;
                 this.updateLevelDisplay();
@@ -587,7 +584,7 @@ class LevelSelectScene extends Phaser.Scene {
         // Кнопка Назад
         let backContainer = this.add.container(640, 560);
         let bBorder = this.add.rectangle(0, 0, 260, 40, 0x000000);
-        let bBg = this.add.rectangle(0, 0, 254, 34, 0x1f1408).setStrokeStyle(2, 0x8c6f3e);
+        let bBg = this.add.rectangle(0, 0, 254, 34, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
         let bTxt = this.add.text(0, 0, 'ГОЛОВНЕ МЕНЮ', {
             fontFamily: '"Press Start 2P", monospace', fontSize: '12px', fill: '#cccccc'
         }).setOrigin(0.5);
@@ -595,26 +592,27 @@ class LevelSelectScene extends Phaser.Scene {
         backContainer.add([bBorder, bBg, bTxt]);
         bBg.setInteractive({ useHandCursor: true });
 
-        bBg.on('pointerover', () => { bBg.setFillStyle(0x362714); bTxt.setStyle({ fill: '#ffffff' }); });
-        bBg.on('pointerout', () => { bBg.setFillStyle(0x1f1408); bTxt.setStyle({ fill: '#cccccc' }); });
+        bBg.on('pointerover', () => { bBg.setFillStyle(0x362714, 0.95); bTxt.setStyle({ fill: '#ffffff' }); });
+        bBg.on('pointerout', () => { bBg.setFillStyle(0x1a120a, 0.88); bTxt.setStyle({ fill: '#cccccc' }); });
         bBg.on('pointerdown', () => this.scene.start('MenuScene'));
 
         this.updateLevelDisplay();
     }
 
-    createPixelArrow(x, y, symbol, callback) {
+    createSquarePixelArrow(x, y, symbol, callback) {
         let container = this.add.container(x, y);
+        // Квадратний контур 64x64px (1:1)
         let border = this.add.rectangle(0, 0, 64, 64, 0x000000);
-        let bg = this.add.rectangle(0, 0, 56, 56, 0x1a120a).setStrokeStyle(3, 0x8c6f3e);
+        let bg = this.add.rectangle(0, 0, 56, 56, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
         let txt = this.add.text(0, 0, symbol, {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '28px', fill: '#ffe57f'
+            fontFamily: '"Press Start 2P", monospace', fontSize: '26px', fill: '#ffe57f'
         }).setOrigin(0.5);
 
         container.add([border, bg, txt]);
         bg.setInteractive({ useHandCursor: true });
 
-        bg.on('pointerover', () => { bg.setFillStyle(0x362714); bg.setStrokeStyle(3, 0xffe57f); });
-        bg.on('pointerout', () => { bg.setFillStyle(0x1a120a); bg.setStrokeStyle(3, 0x8c6f3e); });
+        bg.on('pointerover', () => { bg.setFillStyle(0x362714, 0.95); bg.setStrokeStyle(2, 0xffe57f); });
+        bg.on('pointerout', () => { bg.setFillStyle(0x1a120a, 0.88); bg.setStrokeStyle(2, 0x8c6f3e); });
         bg.on('pointerdown', callback);
     }
 
@@ -632,7 +630,7 @@ class LevelSelectScene extends Phaser.Scene {
 }
 
 // -------------------------------------------------------------------
-// 5. GAME SCENE (ОСНОВНА ГРА)
+// 5. GAME SCENE
 // -------------------------------------------------------------------
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -650,9 +648,8 @@ class GameScene extends Phaser.Scene {
         this.lives = 5;
         this.hearts = [];
         
-        // Анти-читерські параметри
         this.lastFired = 0;
-        this.fireRateDelay = 380; // Затримка між пострілами (380 мс)
+        this.fireRateDelay = 380;
         this.lastTargetX = -1;
         this.lastTargetY = -1;
         this.samePointHits = 0;
@@ -675,7 +672,6 @@ class GameScene extends Phaser.Scene {
         this.arrows = this.physics.add.group();
         this.zombies = this.physics.add.group();
 
-        // М'який звук влучання
         this.pigSound = this.sound.add('pig_sound', { volume: 0.05, rate: 1.0 });
 
         this.scoreText = this.add.text(30, 30, `Очки: 0 / ${this.targetScore}`, { 
@@ -690,7 +686,6 @@ class GameScene extends Phaser.Scene {
             fill: '#ffe57f'
         }).setDepth(100);
 
-        // Таймер проходження
         this.levelTimerEvent = this.time.addEvent({
             delay: 1000,
             callback: () => {
@@ -707,13 +702,11 @@ class GameScene extends Phaser.Scene {
             loop: true
         });
 
-        // Сердечка
         for (let i = 0; i < 5; i++) {
             let heart = this.add.image(1280 - 45 - (i * 45), 40, 'heart').setScale(0.13).setDepth(100);
             this.hearts.push(heart);
         }
 
-        // HUD Кнопки
         if (this.textures.exists('btn_pause')) {
             this.hudPauseBtn = this.add.image(50, 100, 'btn_pause').setDisplaySize(36, 36).setDepth(100).setInteractive({ useHandCursor: true });
         } else {
@@ -730,9 +723,9 @@ class GameScene extends Phaser.Scene {
         }
         this.hudBackBtn.on('pointerdown', (p, x, y, e) => { if (e) e.stopPropagation(); this.showExitConfirmModal(); });
 
-        // Плашка паузи з оновленим Pixel-Art дизайном
+        // Пауза
         let pauseOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.75).setInteractive();
-        let pauseBox = createPixelBox(this, 640, 360, 500, 280, 0x1a120a, 0x000000);
+        let pauseBox = createPixelBox(this, 640, 360, 500, 280);
         let pauseText = this.add.text(640, 260, 'ПАУЗА', {
             fontFamily: '"Press Start 2P", monospace', fontSize: '22px', fill: '#ffffff'
         }).setOrigin(0.5);
@@ -746,9 +739,9 @@ class GameScene extends Phaser.Scene {
         this.pauseGroup = this.add.group([pauseOverlay, pauseBox, pauseText, pauseSubText]).setDepth(999);
         this.pauseGroup.setVisible(false);
 
-        // Підтвердження виходу
+        // Модалка виходу
         let exitOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.8).setInteractive();
-        let exitBox = createPixelBox(this, 640, 360, 480, 220, 0x1a120a, 0x000000);
+        let exitBox = createPixelBox(this, 640, 360, 480, 220);
         let exitQuestion = this.add.text(640, 300, 'Вийти в меню?', {
             fontFamily: '"Press Start 2P", monospace', fontSize: '16px', fill: '#ffffff'
         }).setOrigin(0.5);
@@ -778,7 +771,6 @@ class GameScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-SPACE', this.togglePause, this);
         this.input.keyboard.on('keydown-ESC', this.togglePause, this);
 
-        // Динамічний спавн ворогів
         this.zombieSpawnTimer = this.time.addEvent({
             delay: 650,
             callback: this.spawnZombie,
@@ -839,8 +831,6 @@ class GameScene extends Phaser.Scene {
             if (pointer.isDown) {
                 let now = this.time.now;
                 if (now - this.lastFired >= this.fireRateDelay) {
-                    
-                    // Захист від читерства (стрільба в одну й ту ж точку)
                     let dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.lastTargetX, this.lastTargetY);
                     if (dist < 15) {
                         this.samePointHits++;
@@ -865,7 +855,6 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        // Хвилеподібний рух зомбі
         this.zombies.children.each((zombie) => {
             if (zombie && zombie.active && !zombie.isDying) {
                 zombie.y += Math.sin((this.time.now / 200) + zombie.x) * 0.4;
@@ -932,6 +921,7 @@ class GameScene extends Phaser.Scene {
         if (this.lives <= 0) this.triggerGameOver();
     }
 
+    // Класичний оверлей та плашка результату (Повернено назад)
     triggerGameOver() {
         this.isGameOver = true;
         if (this.zombieSpawnTimer) this.zombieSpawnTimer.remove();
@@ -943,29 +933,19 @@ class GameScene extends Phaser.Scene {
         this.specialTrack.play();
 
         let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.75).setDepth(1000);
-        let box = createPixelBox(this, 640, 360, 520, 300, 0x1a120a, 0x000000).setDepth(1000);
+        let box = createPixelBox(this, 640, 360, 520, 280).setDepth(1000);
 
         let title = this.add.text(640, 260, 'ГРУ ЗАКІНЧЕНО', {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '22px', fill: '#ffffff'
+            fontFamily: '"Press Start 2P", monospace', fontSize: '24px', fill: '#ff4444'
         }).setOrigin(0.5).setDepth(1001);
 
-        // Кнопка Почати Знову
-        let restartContainer = this.add.container(640, 340).setDepth(1001);
-        let rBorder = this.add.rectangle(0, 0, 240, 42, 0x000000);
-        let rBg = this.add.rectangle(0, 0, 234, 36, 0x362714).setStrokeStyle(2, 0x8c6f3e);
-        let rTxt = this.add.text(0, 0, 'ПОЧАТИ ЗНОВУ', { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#ffe57f' }).setOrigin(0.5);
-        restartContainer.add([rBorder, rBg, rTxt]);
-        rBg.setInteractive({ useHandCursor: true });
-        rBg.on('pointerdown', () => { this.stopAllMusic(); this.scene.restart(); });
+        let restartBtn = this.createResultButton(640, 340, 'ПОЧАТИ ЗНОВУ', () => {
+            this.stopAllMusic(); this.scene.restart();
+        });
 
-        // Обов'язкова кнопка "Повернутися в меню"
-        let menuContainer = this.add.container(640, 410).setDepth(1001);
-        let mBorder = this.add.rectangle(0, 0, 280, 42, 0x000000);
-        let mBg = this.add.rectangle(0, 0, 274, 36, 0x1a120a).setStrokeStyle(2, 0x8c6f3e);
-        let mTxt = this.add.text(0, 0, 'ПОВЕРНУТИСЯ В МЕНЮ', { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#ffffff' }).setOrigin(0.5);
-        menuContainer.add([mBorder, mBg, mTxt]);
-        mBg.setInteractive({ useHandCursor: true });
-        mBg.on('pointerdown', () => { this.stopAllMusic(); this.scene.start('MenuScene'); });
+        let menuBtn = this.createResultButton(640, 410, 'ПОВЕРНУТИСЯ В МЕНЮ', () => {
+            this.stopAllMusic(); this.scene.start('MenuScene');
+        });
     }
 
     triggerWin() {
@@ -988,7 +968,7 @@ class GameScene extends Phaser.Scene {
         this.specialTrack.play();
 
         let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.75).setDepth(1000);
-        let box = createPixelBox(this, 640, 360, 560, 320, 0x1a120a, 0x000000).setDepth(1000);
+        let box = createPixelBox(this, 640, 360, 560, 320).setDepth(1000);
 
         let title = this.add.text(640, 240, 'ПЕРЕМОГА!', {
             fontFamily: '"Press Start 2P", monospace', fontSize: '24px', fill: '#ffe57f'
@@ -998,22 +978,31 @@ class GameScene extends Phaser.Scene {
             fontFamily: '"Press Start 2P", monospace', fontSize: '14px', fill: '#ffffff'
         }).setOrigin(0.5).setDepth(1001);
 
-        let retryContainer = this.add.container(640, 360).setDepth(1001);
-        let rBorder = this.add.rectangle(0, 0, 240, 42, 0x000000);
-        let rBg = this.add.rectangle(0, 0, 234, 36, 0x362714).setStrokeStyle(2, 0x8c6f3e);
-        let rTxt = this.add.text(0, 0, 'ПОВТОРИТИ', { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#ffffff' }).setOrigin(0.5);
-        retryContainer.add([rBorder, rBg, rTxt]);
-        rBg.setInteractive({ useHandCursor: true });
-        rBg.on('pointerdown', () => { this.stopAllMusic(); this.scene.restart(); });
+        let retryBtn = this.createResultButton(640, 350, 'ПОВТОРИТИ', () => {
+            this.stopAllMusic(); this.scene.restart();
+        });
 
-        // Обов'язкова кнопка "Повернутися в меню"
-        let menuContainer = this.add.container(640, 420).setDepth(1001);
-        let mBorder = this.add.rectangle(0, 0, 280, 42, 0x000000);
-        let mBg = this.add.rectangle(0, 0, 274, 36, 0x1a120a).setStrokeStyle(2, 0x8c6f3e);
-        let mTxt = this.add.text(0, 0, 'ПОВЕРНУТИСЯ В МЕНЮ', { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#ffe57f' }).setOrigin(0.5);
-        menuContainer.add([mBorder, mBg, mTxt]);
-        mBg.setInteractive({ useHandCursor: true });
-        mBg.on('pointerdown', () => { this.stopAllMusic(); this.scene.start('MenuScene'); });
+        let menuBtn = this.createResultButton(640, 415, 'ПОВЕРНУТИСЯ В МЕНЮ', () => {
+            this.stopAllMusic(); this.scene.start('MenuScene');
+        });
+    }
+
+    createResultButton(x, y, text, callback) {
+        let container = this.add.container(x, y).setDepth(1001);
+        let border = this.add.rectangle(0, 0, 280, 42, 0x000000);
+        let bg = this.add.rectangle(0, 0, 274, 36, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
+        let txt = this.add.text(0, 0, text, {
+            fontFamily: '"Press Start 2P", monospace', fontSize: '12px', fill: '#ffe57f'
+        }).setOrigin(0.5);
+
+        container.add([border, bg, txt]);
+        bg.setInteractive({ useHandCursor: true });
+
+        bg.on('pointerover', () => { bg.setFillStyle(0x362714, 0.95); txt.setStyle({ fill: '#ffffff' }); });
+        bg.on('pointerout', () => { bg.setFillStyle(0x1a120a, 0.88); txt.setStyle({ fill: '#ffe57f' }); });
+        bg.on('pointerdown', callback);
+
+        return container;
     }
 
     stopAllMusic() {
@@ -1044,7 +1033,6 @@ class GameScene extends Phaser.Scene {
     spawnZombie() {
         if (this.isGameOver || this.isWin || this.isPaused) return;
 
-        // Покращена різноманітність позицій Y для захисту від читерства
         let groundY = Phaser.Math.Between(520, 690);
         let startX = Phaser.Math.Between(1310, 1380);
 
@@ -1054,7 +1042,6 @@ class GameScene extends Phaser.Scene {
         let typeRoll = Phaser.Math.Between(1, 100);
         let speed, scale, hp, reward;
 
-        // Зомбі вмирають швидше (1 влучання для більшості), але біжать динамічніше
         if (typeRoll <= 35) {
             scale = 0.45; speed = Phaser.Math.Between(-280, -210); hp = 1; reward = 30;
         } else if (typeRoll <= 55) {
