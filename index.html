@@ -63,6 +63,9 @@ class PreloaderScene extends Phaser.Scene {
             fill: '#ffffff'
         }).setOrigin(0.5);
 
+        // Завантаження фону головного меню
+        this.load.image('menu_bg', 'assets/menu_bg.png');
+
         this.load.image('background', 'assets/background.png');
         this.load.image('tower', 'assets/tower.png');
         this.load.image('patron', 'assets/patron.png');
@@ -99,35 +102,101 @@ class MenuScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.rectangle(640, 360, 1280, 720, 0x77623a);
+        // Фонове зображення меню (Image 2)
+        if (this.textures.exists('menu_bg')) {
+            let bg = this.add.image(640, 360, 'menu_bg');
+            bg.setDisplaySize(1280, 720);
+        } else {
+            this.add.rectangle(640, 360, 1280, 720, 0x3d301c);
+        }
 
         createGrainTexture(this);
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
-        grain.setAlpha(0.6);
+        grain.setAlpha(0.3);
 
-        this.add.text(640, 220, 'ПЕС ПАТРОН', {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: '48px',
-            fill: '#ffffff'
-        }).setOrigin(0.5);
-
-        let playBtn = this.add.text(640, 420, 'ГРАТИ', {
+        // Головна назва гри
+        let titleText = this.add.text(640, 110, 'ПЕС ПАТРОН vs ПРИГОЖИН', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '32px',
-            fill: '#ffffff',
-            backgroundColor: '#4a3b22',
-            padding: { x: 30, y: 15 }
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+            fill: '#ffd966',
+            stroke: '#291b0c',
+            strokeThickness: 8,
+            align: 'center'
+        }).setOrigin(0.5);
 
-        playBtn.on('pointerover', () => playBtn.setStyle({ fill: '#ffcc00', backgroundColor: '#332714' }));
-        playBtn.on('pointerout', () => playBtn.setStyle({ fill: '#ffffff', backgroundColor: '#4a3b22' }));
+        // Підзаголовок
+        this.add.text(640, 160, '🐾 ГРА ПРО ХОРОБРОГО ПСА 🐾', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '16px',
+            fill: '#fff1c5',
+            stroke: '#1a0d03',
+            strokeThickness: 4,
+            align: 'center'
+        }).setOrigin(0.5);
 
-        playBtn.on('pointerdown', () => {
-            if (this.sound.context.state === 'suspended') {
-                this.sound.context.resume();
-            }
-            this.scene.start('LevelSelectScene');
+        // Список кнопок меню
+        const buttonsData = [
+            { text: 'ПОЧАТИ ГРУ', action: () => {
+                if (this.sound.context.state === 'suspended') {
+                    this.sound.context.resume();
+                }
+                this.scene.start('LevelSelectScene');
+            }},
+            { text: 'НАЛАШТУВАННЯ', action: () => {
+                // Можна розширити в майбутньому
+            }},
+            { text: 'РЕКОРДИ', action: () => {
+                // Можна розширити в майбутньому
+            }},
+            { text: 'ВИХІД', action: () => {
+                if (window.close) window.close();
+            }}
+        ];
+
+        let startY = 270;
+        let spacingY = 70;
+
+        buttonsData.forEach((btnInfo, index) => {
+            let btnY = startY + index * spacingY;
+            this.createPixelMenuButton(640, btnY, btnInfo.text, btnInfo.action);
         });
+    }
+
+    // Метод для створення стилізованих піксельних кнопок під дизайн
+    createPixelMenuButton(x, y, textLabel, callback) {
+        let btnWidth = 360;
+        let btnHeight = 52;
+
+        let container = this.add.container(x, y);
+
+        // Зовнішня рамка та фон кнопки
+        let bgOuter = this.add.rectangle(0, 0, btnWidth, btnHeight, 0x1f1910).setStrokeStyle(4, 0x8c6f3e);
+        let bgInner = this.add.rectangle(0, 0, btnWidth - 8, btnHeight - 8, 0x3d301c);
+
+        let label = this.add.text(0, 0, textLabel, {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '18px',
+            fill: '#d1b880',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        container.add([bgOuter, bgInner, label]);
+
+        bgInner.setInteractive({ useHandCursor: true });
+
+        bgInner.on('pointerover', () => {
+            bgOuter.setStrokeStyle(4, 0xffd966);
+            bgInner.setFillStyle(0x574428);
+            label.setStyle({ fill: '#ffffff' });
+        });
+
+        bgInner.on('pointerout', () => {
+            bgOuter.setStrokeStyle(4, 0x8c6f3e);
+            bgInner.setFillStyle(0x3d301c);
+            label.setStyle({ fill: '#d1b880' });
+        });
+
+        bgInner.on('pointerdown', callback);
     }
 }
 
@@ -140,15 +209,22 @@ class LevelSelectScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.rectangle(640, 360, 1280, 720, 0x77623a);
+        if (this.textures.exists('menu_bg')) {
+            let bg = this.add.image(640, 360, 'menu_bg');
+            bg.setDisplaySize(1280, 720);
+        } else {
+            this.add.rectangle(640, 360, 1280, 720, 0x77623a);
+        }
 
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
-        grain.setAlpha(0.6);
+        grain.setAlpha(0.3);
 
         this.add.text(640, 200, 'ВИБІР РІВНЯ', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '36px',
-            fill: '#ffffff'
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 6
         }).setOrigin(0.5);
 
         let lvl1Btn = this.add.text(640, 380, '1 РІВЕНЬ', {
@@ -194,13 +270,13 @@ class GameScene extends Phaser.Scene {
         bg.setDisplaySize(1280, 720);
         bg.setDepth(0);
 
-        // --- ПЕС ПАТРОН (Низький depth = 1) ---
+        // --- ПЕС ПАТРОН ---
         this.patron = this.add.image(170, 230, 'patron').setOrigin(0.5, 0.5);
         this.patron.setScale(0.3);
         this.patron.setDepth(1);
         this.patron.rotation = +15;
 
-        // --- ВЕЖА (Високий depth = 10, тому вона ПОВЕРХ Пса Патрона) ---
+        // --- ВЕЖА (depth = 10, поверх Пса Патрона) ---
         let tower = this.add.image(144, 580, 'tower');
         tower.setOrigin(0.5, 1);
         tower.setScale(0.24);
@@ -226,7 +302,7 @@ class GameScene extends Phaser.Scene {
             this.hearts.push(heart);
         }
 
-        // --- ВЛАСНІ ІКОНКИ КЕРУВАННЯ ---
+        // --- ІКОНКИ КЕРУВАННЯ ---
         let pauseKey = this.textures.exists('btn_pause') ? 'btn_pause' : null;
         let soundOnKey = this.textures.exists('btn_sound_on') ? 'btn_sound_on' : null;
         let soundOffKey = this.textures.exists('btn_sound_off') ? 'btn_sound_off' : null;
@@ -617,7 +693,7 @@ class GameScene extends Phaser.Scene {
     shootArrow(pointer) {
         let arrow = this.arrows.create(this.patron.x, this.patron.y, 'arrow');
         arrow.setScale(0.12);
-        arrow.setDepth(11); // Кулі летять поверх вежі
+        arrow.setDepth(11);
         
         let angle = Phaser.Math.Angle.Between(this.patron.x, this.patron.y, pointer.x, pointer.y);
         arrow.rotation = angle;
