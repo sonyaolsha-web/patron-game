@@ -449,6 +449,9 @@ class HighscoresScene extends Phaser.Scene {
 // -------------------------------------------------------------------
 // 4. СЦЕНА: ВИБІР РІВНЯ
 // -------------------------------------------------------------------
+class // -------------------------------------------------------------------
+// 4. СЦЕНА: ВИБІР РІВНЯ
+// -------------------------------------------------------------------
 class LevelSelectScene extends Phaser.Scene {
     constructor() {
         super({ key: 'LevelSelectScene' });
@@ -468,14 +471,14 @@ class LevelSelectScene extends Phaser.Scene {
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
         grain.setAlpha(0.25);
 
-        this.add.text(644, 184, 'ВИБІР РІВНЯ', {
+        this.add.text(644, 144, 'ВИБІР РІВНЯ', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '38px',
             fill: '#000000',
             align: 'center'
         }).setOrigin(0.5).setAlpha(0.7);
 
-        this.add.text(640, 180, 'ВИБІР РІВНЯ', {
+        this.add.text(640, 140, 'ВИБІР РІВНЯ', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '38px',
             fill: '#ffe57f',
@@ -484,14 +487,22 @@ class LevelSelectScene extends Phaser.Scene {
             align: 'center'
         }).setOrigin(0.5);
 
-        this.createPixelMenuButton(640, 340, '1 РІВЕНЬ', () => {
+        // Кнопка 1 рівня
+        this.createPixelMenuButton(640, 260, '1 РІВЕНЬ (ЗОМБІ)', () => {
             stopMenuMusic(this);
             this.scene.start('GameScene');
-        }, 280);
+        }, 340);
 
-        this.createPixelMenuButton(640, 430, 'НАЗАД В МЕНЮ', () => {
+        // Кнопка 2 рівня (НОВА)
+        this.createPixelMenuButton(640, 350, '2 РІВЕНЬ (ДРОНИ)', () => {
+            stopMenuMusic(this);
+            this.scene.start('GameSceneLevel2');
+        }, 340);
+
+        // Кнопка Назад
+        this.createPixelMenuButton(640, 460, 'НАЗАД В МЕНЮ', () => {
             this.scene.start('MenuScene');
-        }, 280);
+        }, 340);
     }
 
     createPixelMenuButton(x, y, textLabel, callback, width = 280) {
@@ -528,7 +539,6 @@ class LevelSelectScene extends Phaser.Scene {
         bgInner.on('pointerdown', callback);
     }
 }
-
 // -------------------------------------------------------------------
 // 5. ОСНОВНА СЦЕНА ГРИ
 // -------------------------------------------------------------------
@@ -1150,6 +1160,232 @@ class GameScene extends Phaser.Scene {
     }
 }
 
+    // -------------------------------------------------------------------
+// 6. ДРУГИЙ РІВЕНЬ: БАНКИ ОГІРКІВ ПРОТИ ДРОНІВ
+// -------------------------------------------------------------------
+class GameSceneLevel2 extends Phaser.Scene {
+    constructor() {
+        super({ key: 'GameSceneLevel2' });
+    }
+
+    create() {
+        stopMenuMusic(this);
+
+        this.isGameOver = false;
+        this.isWin = false;
+        this.isPaused = false;
+        this.score = 0;
+        this.targetScore = 1000;
+        this.lives = 5;
+        this.hearts = [];
+        
+        this.lastFired = 0;
+        this.fireRateDelay = 600; 
+        this.elapsedSeconds = 0;
+
+        // Вмикаємо гравітацію для польоту банок по дузі
+        this.physics.world.gravity.y = 600;
+
+        let bg = this.add.image(640, 360, 'background');
+        bg.setDisplaySize(1280, 720).setDepth(0);
+
+        // Патрон ліворуч умовно "у вікні"
+        this.patron = this.add.image(150, 200, 'patron').setOrigin(0.5).setScale(0.3).setDepth(10);
+
+        this.jars = this.physics.add.group();
+        this.drones = this.physics.add.group();
+
+        this.scoreText = this.add.text(40, 40, `Очки: 0 / ${this.targetScore}`, { 
+            fontFamily: '"Press Start 2P", monospace', 
+            fontSize: '20px', 
+            fill: '#ffffff' 
+        }).setDepth(100);
+
+        this.timerText = this.add.text(40, 70, 'Час: 00:00', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '16px',
+            fill: '#ffe57f'
+        }).setDepth(100);
+
+        for (let i = 0; i < 5; i++) {
+            let heart = this.add.image(1280 - 60 - (i * 65), 55, 'heart');
+            heart.setScale(0.16).setDepth(100);
+            this.hearts.push(heart);
+        }
+
+        this.levelTimerEvent = this.time.addEvent({
+            delay: 1000,
+            callback: () => {
+                if (!this.isPaused && !this.isGameOver && !this.isWin) {
+                    this.elapsedSeconds++;
+                    this.timerText.setText('Час: ' + formatTime(this.elapsedSeconds));
+                }
+            },
+            callbackScope: this,
+            loop: true
+        });
+
+        // Кидок банки по кліку мишки
+        this.input.on('pointerdown', (pointer) => {
+            if (this.isGameOver || this.isWin || this.isPaused) return;
+
+            let now = this.time.now;
+            if (now - this.lastFired >= this.fireRateDelay) {
+                this.throwJar(pointer);
+                this.lastFired = now;
+            }
+        });
+
+        // Поява дронів
+        this.droneSpawnTimer = this.time.addEvent({
+            delay: 1200,
+            callback: this.spawnDrone,
+            callbackScope: this,
+            loop: true
+        });
+
+        this.physics.add.overlap(this.jars, this.drones, this.hitDrone, null, this);
+    }
+
+    update() {
+        if (this.isGameOver || this.isWin || this.isPaused) return;
+
+        // Обертання банки в повітрі
+        this.jars.children.each((jar) => {
+            if (jar && jar.active) {
+                jar.rotation += 0.1;
+                if (jar.y > 750 || jar.x > 1300 || jar.x < -50) {
+                    jar.destroy();
+                }
+            }
+        });
+
+        // Коливання дронів у повітрі
+        this.drones.children.each((drone) => {
+            if (drone && drone.active) {
+                drone.y += Math.sin(this.time.now / 200) * 0.8;
+
+                if (drone.x < 150 && !drone.isDying) {
+                    drone.isDying = true;
+                    this.takeDamage();
+                    drone.destroy();
+                }
+            }
+        });
+    }
+
+    throwJar(pointer) {
+        // Поки немає фото банки — використовуємо тимчасово картинку яблука ('apple')
+        let jarKey = this.textures.exists('jar') ? 'jar' : 'apple';
+        let jar = this.jars.create(this.patron.x + 30, this.patron.y, jarKey);
+        jar.setScale(0.12).setDepth(11);
+
+        let targetX = pointer.x;
+        let targetY = pointer.y;
+
+        let angle = Phaser.Math.Angle.Between(this.patron.x, this.patron.y, targetX, targetY);
+        let speed = 800; // Початкова швидкість
+
+        // Встановлюємо фізичний вектор кидка
+        jar.body.setVelocityX(Math.cos(angle) * speed);
+        jar.body.setVelocityY(Math.sin(angle) * speed);
+    }
+
+    spawnDrone() {
+        if (this.isGameOver || this.isWin || this.isPaused) return;
+
+        let spawnY = Phaser.Math.Between(100, 500);
+        // Поки немає фото дрона — використовуємо тимчасово 'zombie'
+        let droneKey = this.textures.exists('drone') ? 'drone' : 'zombie';
+        let drone = this.drones.create(1320, spawnY, droneKey);
+        
+        drone.setScale(0.5);
+        drone.body.allowGravity = false; // Дрони не падають від гравітації
+        drone.setVelocityX(Phaser.Math.Between(-220, -130));
+    }
+
+    hitDrone(jar, drone) {
+        if (jar.active && drone.active) {
+            jar.destroy();
+            drone.destroy();
+
+            this.score += 50;
+            this.scoreText.setText(`Очки: ${this.score} / ${this.targetScore}`);
+
+            if (this.score >= this.targetScore && !this.isWin) {
+                this.triggerWin();
+            }
+        }
+    }
+
+    takeDamage() {
+        this.lives--;
+        if (this.hearts[this.lives]) {
+            this.hearts[this.lives].setVisible(false);
+        }
+        if (this.lives <= 0) {
+            this.triggerGameOver();
+        }
+    }
+
+    triggerGameOver() {
+        this.isGameOver = true;
+        this.physics.pause();
+        if (this.droneSpawnTimer) this.droneSpawnTimer.remove();
+
+        let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65).setDepth(1000);
+
+        this.add.text(640, 240, 'ДРОНИ ПРОБИЛИСЯ!', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '36px',
+            fill: '#ff2222'
+        }).setOrigin(0.5).setDepth(1001);
+
+        let restartText = this.add.text(640, 350, 'ПОЧАТИ ЗНОВУ', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '22px',
+            fill: '#ffffff',
+            backgroundColor: '#4a3b22',
+            padding: { x: 25, y: 12 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1001);
+
+        restartText.on('pointerdown', () => this.scene.restart());
+
+        let menuText = this.add.text(640, 440, 'ПОВЕРНУТИСЬ В МЕНЮ', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '22px',
+            fill: '#ffffff',
+            backgroundColor: '#362714',
+            padding: { x: 25, y: 12 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1001);
+
+        menuText.on('pointerdown', () => this.scene.start('MenuScene'));
+    }
+
+    triggerWin() {
+        this.isWin = true;
+        this.physics.pause();
+        if (this.droneSpawnTimer) this.droneSpawnTimer.remove();
+
+        let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.7).setDepth(1000);
+
+        this.add.text(640, 250, 'НЕБО ЧИСТЕ!', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '44px',
+            fill: '#ffe57f'
+        }).setOrigin(0.5).setDepth(1001);
+
+        let menuBtn = this.add.text(640, 380, 'В МЕНЮ', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '22px',
+            fill: '#ffffff',
+            backgroundColor: '#362714',
+            padding: { x: 25, y: 12 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1001);
+
+        menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+    }
+}
 const config = {
     type: Phaser.AUTO,
     scale: {
