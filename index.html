@@ -26,11 +26,9 @@ window.addEventListener('contextmenu', function (e) {
     e.preventDefault();
 }, false);
 
-// -------------------------------------------------------------------
-// ГЛОБАЛЬНІ ФУНКЦІЇ ТА МЕНЕДЖЕР АУДІО
-// -------------------------------------------------------------------
 function createGrainTexture(scene) {
     if (scene.textures.exists('grain_texture')) return;
+    
     let canvas = scene.textures.createCanvas('grain_texture', 256, 256);
     let ctx = canvas.context;
     let imgData = ctx.createImageData(256, 256);
@@ -41,7 +39,7 @@ function createGrainTexture(scene) {
         data[i] = grain;
         data[i + 1] = grain;
         data[i + 2] = grain;
-        data[i + 3] = 20;
+        data[i + 3] = 25;
     }
 
     ctx.putImageData(imgData, 0, 0);
@@ -55,10 +53,10 @@ function formatTime(seconds) {
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
-// Фонова музика (безперервна між меню)
+// Глобальний менеджер фонової музики меню
 function playMenuMusic(scene) {
     if (!scene.game.menuMusic) {
-        scene.game.menuMusic = scene.sound.add('menu_music', { volume: 0.35, loop: true });
+        scene.game.menuMusic = scene.sound.add('menu_music', { volume: 0.5, loop: true });
     }
     
     if (!scene.game.menuMusic.isPlaying) {
@@ -92,72 +90,8 @@ function stopMenuMusic(scene) {
     }
 }
 
-// Єдина уніфікована плашка у напівпрозорому піксельному стилі
-function createPixelBox(scene, x, y, width, height, alpha = 0.88) {
-    let container = scene.add.container(x, y);
-
-    let outerBorder = scene.add.rectangle(0, 0, width, height, 0x000000);
-    let innerBg = scene.add.rectangle(0, 0, width - 8, height - 8, 0x1a120a, alpha);
-    let innerFrame = scene.add.rectangle(0, 0, width - 14, height - 14, 0x000000, 0).setStrokeStyle(2, 0x8c6f3e);
-
-    container.add([outerBorder, innerBg, innerFrame]);
-    return container;
-}
-
 // -------------------------------------------------------------------
-// АЧІВКИ
-// -------------------------------------------------------------------
-function showAchievement(scene, title, description) {
-    if (!scene.achievementsUnlocked) scene.achievementsUnlocked = {};
-    if (scene.achievementsUnlocked[title]) return; 
-    scene.achievementsUnlocked[title] = true;
-
-    let width = 320;
-    let height = 64;
-    let x = 1280 - width - 20;
-    let y = -80; 
-
-    let container = scene.add.container(x, y).setDepth(2000);
-
-    let border = scene.add.rectangle(width/2, height/2, width, height, 0x000000);
-    let bg = scene.add.rectangle(width/2, height/2, width - 6, height - 6, 0x1a120a, 0.95).setStrokeStyle(2, 0xffe57f);
-    let icon = scene.add.text(20, height/2, '🏆', { fontSize: '20px' }).setOrigin(0.5);
-
-    let titleTxt = scene.add.text(45, 14, title.toUpperCase(), {
-        fontFamily: '"Press Start 2P", monospace',
-        fontSize: '11px',
-        fill: '#ffe57f'
-    });
-
-    let descTxt = scene.add.text(45, 36, description, {
-        fontFamily: '"Press Start 2P", monospace',
-        fontSize: '9px',
-        fill: '#ffffff'
-    });
-
-    container.add([border, bg, icon, titleTxt, descTxt]);
-
-    scene.tweens.add({
-        targets: container,
-        y: 20,
-        duration: 400,
-        ease: 'Back.easeOut',
-        onComplete: () => {
-            scene.time.delayedCall(3000, () => {
-                scene.tweens.add({
-                    targets: container,
-                    y: -100,
-                    duration: 400,
-                    ease: 'Back.easeIn',
-                    onComplete: () => container.destroy()
-                });
-            });
-        }
-    });
-}
-
-// -------------------------------------------------------------------
-// 0. PRELOADER SCENE
+// 0. СЦЕНА ПОПЕРЕДНЬОГО ЗАВАНТАЖЕННЯ
 // -------------------------------------------------------------------
 class PreloaderScene extends Phaser.Scene {
     constructor() {
@@ -165,12 +99,12 @@ class PreloaderScene extends Phaser.Scene {
     }
 
     preload() {
-        this.add.rectangle(640, 360, 1280, 720, 0x1f170e);
+        this.add.rectangle(640, 360, 1280, 720, 0x77623a);
         
         this.add.text(640, 360, 'ЗАВАНТАЖЕННЯ...', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '16px',
-            fill: '#ffe57f'
+            fontSize: '24px',
+            fill: '#ffffff'
         }).setOrigin(0.5);
 
         this.load.image('menu_bg', 'assets/menu_bg.png');
@@ -204,7 +138,7 @@ class PreloaderScene extends Phaser.Scene {
 }
 
 // -------------------------------------------------------------------
-// 1. MENU SCENE
+// 1. СЦЕНА: ГОЛОВНЕ МЕНЮ
 // -------------------------------------------------------------------
 class MenuScene extends Phaser.Scene {
     constructor() {
@@ -223,82 +157,94 @@ class MenuScene extends Phaser.Scene {
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
         grain.setAlpha(0.25);
 
-        // Повернено великий розмір заголовку
-        this.add.text(644, 134, 'ПЕС ПАТРОН vs ПРИГОЖИН', {
+        this.add.text(644, 114, 'ПЕС ПАТРОН vs ПРИГОЖИН', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '32px',
-            fill: '#000000'
-        }).setOrigin(0.5);
+            fontSize: '38px',
+            fill: '#000000',
+            align: 'center'
+        }).setOrigin(0.5).setAlpha(0.7);
 
-        this.add.text(640, 130, 'ПЕС ПАТРОН vs ПРИГОЖИН', {
+        this.add.text(640, 110, 'ПЕС ПАТРОН vs ПРИГОЖИН', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '32px',
+            fontSize: '38px',
             fill: '#ffe57f',
             stroke: '#140c03',
-            strokeThickness: 8
+            strokeThickness: 10,
+            align: 'center'
         }).setOrigin(0.5);
 
-        this.add.text(640, 185, 'ГРА ПРО ХОРОБРОГО ПСА', {
+        this.add.text(640, 168, '🐾 ГРА ПРО ХОРОБРОГО ПСА 🐾', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '15px',
+            fontSize: '16px',
             fill: '#fff3cd',
             stroke: '#1a0d03',
-            strokeThickness: 4
+            strokeThickness: 5,
+            align: 'center'
         }).setOrigin(0.5);
 
         const buttonsData = [
-            { text: 'ПОЧАТИ ГРУ', action: () => this.scene.start('LevelSelectScene') },
-            { text: 'НАЛАШТУВАННЯ', action: () => this.scene.start('SettingsScene') },
-            { text: 'РЕКОРДИ', action: () => this.scene.start('HighscoresScene') },
-            { text: 'ВИХІД', action: () => { if (window.close) window.close(); } }
+            { text: 'ПОЧАТИ ГРУ', action: () => {
+                this.scene.start('LevelSelectScene');
+            }},
+            { text: 'НАЛАШТУВАННЯ', action: () => {
+                this.scene.start('SettingsScene');
+            }},
+            { text: 'РЕКОРДИ', action: () => {
+                this.scene.start('HighscoresScene');
+            }},
+            { text: 'ВИХІД', action: () => {
+                if (window.close) window.close();
+            }}
         ];
 
-        let startY = 280;
-        let spacingY = 70;
+        let startY = 275;
+        let spacingY = 75;
 
         buttonsData.forEach((btnInfo, index) => {
-            this.createPixelMenuButton(640, startY + index * spacingY, btnInfo.text, btnInfo.action);
+            let btnY = startY + index * spacingY;
+            this.createPixelMenuButton(640, btnY, btnInfo.text, btnInfo.action);
         });
 
         playMenuMusic(this);
     }
 
-    createPixelMenuButton(x, y, textLabel, callback) {
-        let btnWidth = 280;
-        let btnHeight = 52;
+    createPixelMenuButton(x, y, textLabel, callback, width = 280) {
+        let btnHeight = 54;
+
         let container = this.add.container(x, y);
 
-        let outerBorder = this.add.rectangle(0, 0, btnWidth, btnHeight, 0x000000);
-        let innerBg = this.add.rectangle(0, 0, btnWidth - 6, btnHeight - 6, 0x1a120a, 0.88);
-        let innerBorder = this.add.rectangle(0, 0, btnWidth - 12, btnHeight - 12, 0x000000, 0).setStrokeStyle(2, 0x8c6f3e);
+        let bgOuter = this.add.rectangle(0, 0, width, btnHeight, 0x120d07).setStrokeStyle(4, 0x8c6f3e);
+        let bgInner = this.add.rectangle(0, 0, width - 8, btnHeight - 8, 0x362714);
 
         let label = this.add.text(0, 0, textLabel, {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '14px',
-            fill: '#e6ca94'
+            fill: '#e6ca94',
+            align: 'center'
         }).setOrigin(0.5);
 
-        container.add([outerBorder, innerBg, innerBorder, label]);
-        innerBg.setInteractive({ useHandCursor: true });
+        container.add([bgOuter, bgInner, label]);
 
-        innerBg.on('pointerover', () => {
-            innerBg.setFillStyle(0x362714, 0.95);
-            innerBorder.setStrokeStyle(2, 0xffe57f);
+        bgInner.setInteractive({ useHandCursor: true });
+
+        bgInner.on('pointerover', () => {
+            bgOuter.setStrokeStyle(4, 0xffe57f);
+            bgInner.setFillStyle(0x543e20);
             label.setStyle({ fill: '#ffffff' });
         });
 
-        innerBg.on('pointerout', () => {
-            innerBg.setFillStyle(0x1a120a, 0.88);
-            innerBorder.setStrokeStyle(2, 0x8c6f3e);
+        bgInner.on('pointerout', () => {
+            bgOuter.setStrokeStyle(4, 0x8c6f3e);
+            bgInner.setFillStyle(0x362714);
             label.setStyle({ fill: '#e6ca94' });
         });
 
-        innerBg.on('pointerdown', callback);
+        bgInner.on('pointerdown', callback);
     }
 }
 
 // -------------------------------------------------------------------
-// 2. SETTINGS SCENE
+// 2. СЦЕНА: НАЛАШТУВАННЯ
 // -------------------------------------------------------------------
 class SettingsScene extends Phaser.Scene {
     constructor() {
@@ -318,33 +264,37 @@ class SettingsScene extends Phaser.Scene {
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
         grain.setAlpha(0.25);
 
-        createPixelBox(this, 640, 360, 720, 460);
+        this.add.rectangle(640, 360, 750, 480, 0x1a120a, 0.9).setStrokeStyle(4, 0x8c6f3e);
 
-        this.add.text(640, 180, 'НАЛАШТУВАННЯ', {
+        this.add.text(640, 170, 'НАЛАШТУВАННЯ', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '22px',
-            fill: '#ffe57f'
+            fontSize: '32px',
+            fill: '#ffe57f',
+            stroke: '#000',
+            strokeThickness: 6
         }).setOrigin(0.5);
 
-        this.add.text(340, 260, 'ГУЧНІСТЬ:', {
+        this.add.text(320, 260, 'ГУЧНІСТЬ:', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '16px',
+            fontSize: '20px',
             fill: '#e6ca94'
         }).setOrigin(0, 0.5);
 
-        this.createPixelSmallButton(710, 260, '-', () => {
-            this.sound.setVolume(Math.max(0, this.sound.volume - 0.1));
+        let volMinus = this.createSmallButton(720, 260, '-', () => {
+            let currentVol = this.sound.volume;
+            this.sound.setVolume(Math.max(0, currentVol - 0.1));
             updateVolText();
         });
 
-        this.volText = this.add.text(780, 260, '', {
+        this.volText = this.add.text(800, 260, '', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '16px',
+            fontSize: '20px',
             fill: '#ffffff'
         }).setOrigin(0.5);
 
-        this.createPixelSmallButton(850, 260, '+', () => {
-            this.sound.setVolume(Math.min(1, this.sound.volume + 0.1));
+        let volPlus = this.createSmallButton(880, 260, '+', () => {
+            let currentVol = this.sound.volume;
+            this.sound.setVolume(Math.min(1, currentVol + 0.1));
             updateVolText();
         });
 
@@ -353,24 +303,25 @@ class SettingsScene extends Phaser.Scene {
         };
         updateVolText();
 
-        this.add.text(340, 330, 'ЗВУК:', {
+        this.add.text(320, 340, 'ЗВУК:', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '16px',
+            fontSize: '20px',
             fill: '#e6ca94'
         }).setOrigin(0, 0.5);
 
-        this.soundBtnText = this.createPixelOptionButton(780, 330, this.sound.mute ? 'ВИМК' : 'УВІМК', () => {
+        this.soundBtnText = this.createOptionButton(800, 340, this.sound.mute ? 'ВИМК' : 'УВІМК', () => {
             this.sound.mute = !this.sound.mute;
             this.soundBtnText.setText(this.sound.mute ? 'ВИМК' : 'УВІМК');
         });
 
-        this.add.text(340, 400, 'ПОВНИЙ ЕКРАН:', {
+        this.add.text(320, 420, 'ПОВНИЙ ЕКРАН:', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '16px',
+            fontSize: '20px',
             fill: '#e6ca94'
         }).setOrigin(0, 0.5);
 
-        this.fsBtnText = this.createPixelOptionButton(780, 400, this.scale.isFullscreen ? 'УВІМК' : 'ВИМК', () => {
+        let isFS = this.scale.isFullscreen;
+        this.fsBtnText = this.createOptionButton(800, 420, isFS ? 'УВІМК' : 'ВИМК', () => {
             if (this.scale.isFullscreen) {
                 this.scale.stopFullscreen();
                 this.fsBtnText.setText('ВИМК');
@@ -380,49 +331,45 @@ class SettingsScene extends Phaser.Scene {
             }
         });
 
-        this.createPixelOptionButton(640, 500, 'ПОВЕРНУТИСЯ В МЕНЮ', () => {
+        this.createOptionButton(640, 520, 'НАЗАД В МЕНЮ', () => {
             this.scene.start('MenuScene');
-        }, 320);
+        }, 300);
     }
 
-    createPixelSmallButton(x, y, text, callback) {
+    createSmallButton(x, y, text, callback) {
+        let btn = this.add.text(x, y, text, {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '22px',
+            fill: '#ffffff',
+            backgroundColor: '#362714',
+            padding: { x: 15, y: 8 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        btn.on('pointerover', () => btn.setStyle({ fill: '#ffe57f', backgroundColor: '#543e20' }));
+        btn.on('pointerout', () => btn.setStyle({ fill: '#ffffff', backgroundColor: '#362714' }));
+        btn.on('pointerdown', callback);
+        return btn;
+    }
+
+    createOptionButton(x, y, text, callback, width = 180) {
         let container = this.add.container(x, y);
-        let border = this.add.rectangle(0, 0, 40, 40, 0x000000);
-        let bg = this.add.rectangle(0, 0, 34, 34, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
+        let bg = this.add.rectangle(0, 0, width, 44, 0x362714).setStrokeStyle(3, 0x8c6f3e);
         let txt = this.add.text(0, 0, text, {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '18px',
-            fill: '#ffffff'
-        }).setOrigin(0.5);
-
-        container.add([border, bg, txt]);
-        bg.setInteractive({ useHandCursor: true });
-
-        bg.on('pointerover', () => { bg.setFillStyle(0x362714, 0.95); txt.setStyle({ fill: '#ffe57f' }); });
-        bg.on('pointerout', () => { bg.setFillStyle(0x1a120a, 0.88); txt.setStyle({ fill: '#ffffff' }); });
-        bg.on('pointerdown', callback);
-    }
-
-    createPixelOptionButton(x, y, text, callback, width = 160) {
-        let container = this.add.container(x, y);
-        let border = this.add.rectangle(0, 0, width, 44, 0x000000);
-        let bg = this.add.rectangle(0, 0, width - 6, 38, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
-        let txt = this.add.text(0, 0, text, {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: '12px',
             fill: '#ffe57f'
         }).setOrigin(0.5);
 
-        container.add([border, bg, txt]);
+        container.add([bg, txt]);
         bg.setInteractive({ useHandCursor: true });
 
         bg.on('pointerover', () => {
-            bg.setFillStyle(0x362714, 0.95);
-            bg.setStrokeStyle(2, 0xffe57f);
+            bg.setStrokeStyle(3, 0xffe57f);
+            bg.setFillStyle(0x543e20);
         });
         bg.on('pointerout', () => {
-            bg.setFillStyle(0x1a120a, 0.88);
-            bg.setStrokeStyle(2, 0x8c6f3e);
+            bg.setStrokeStyle(3, 0x8c6f3e);
+            bg.setFillStyle(0x362714);
         });
         bg.on('pointerdown', callback);
 
@@ -431,7 +378,7 @@ class SettingsScene extends Phaser.Scene {
 }
 
 // -------------------------------------------------------------------
-// 3. HIGHSCORES SCENE
+// 3. СЦЕНА: РЕКОРДИ
 // -------------------------------------------------------------------
 class HighscoresScene extends Phaser.Scene {
     constructor() {
@@ -451,12 +398,14 @@ class HighscoresScene extends Phaser.Scene {
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
         grain.setAlpha(0.25);
 
-        createPixelBox(this, 640, 360, 750, 440);
+        this.add.rectangle(640, 360, 800, 480, 0x1a120a, 0.9).setStrokeStyle(4, 0x8c6f3e);
 
-        this.add.text(640, 180, 'ТАБЛИЦЯ РЕКОРДІВ', {
+        this.add.text(640, 170, 'ТАБЛИЦЯ РЕКОРДІВ', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '22px',
-            fill: '#ffe57f'
+            fontSize: '30px',
+            fill: '#ffe57f',
+            stroke: '#000',
+            strokeThickness: 6
         }).setOrigin(0.5);
 
         let bestTime = localStorage.getItem('patron_best_time');
@@ -465,48 +414,44 @@ class HighscoresScene extends Phaser.Scene {
 
         this.add.text(640, 260, 'НАЙШВИДШИЙ ЧАС ПРОХОДЖЕННЯ', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '14px',
+            fontSize: '16px',
             fill: '#e6ca94'
         }).setOrigin(0.5);
 
-        this.add.text(640, 305, `1 РІВЕНЬ: ${timeFormatted}`, {
+        this.add.text(640, 310, `1 РІВЕНЬ: ${timeFormatted}`, {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '26px',
+            fill: '#ffffff',
+            stroke: '#000',
+            strokeThickness: 4
+        }).setOrigin(0.5);
+
+        this.add.text(640, 380, `УСПІШНИХ ПЕРЕМОГ: ${winsCount}`, {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '18px',
-            fill: '#ffffff'
+            fill: '#a0c980'
         }).setOrigin(0.5);
 
-        this.add.text(640, 370, `КІЛЬКІСТЬ ПЕРЕМОГ: ${winsCount}`, {
+        let backBtn = this.add.text(640, 520, 'НАЗАД В МЕНЮ', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '16px',
-            fill: '#73c936'
-        }).setOrigin(0.5);
+            fontSize: '20px',
+            fill: '#ffffff',
+            backgroundColor: '#362714',
+            padding: { x: 25, y: 12 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-        let backBtnContainer = this.add.container(640, 490);
-        let border = this.add.rectangle(0, 0, 280, 46, 0x000000);
-        let bg = this.add.rectangle(0, 0, 274, 40, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
-        let txt = this.add.text(0, 0, 'ПОВЕРНУТИСЯ В МЕНЮ', {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: '12px',
-            fill: '#ffffff'
-        }).setOrigin(0.5);
-
-        backBtnContainer.add([border, bg, txt]);
-        bg.setInteractive({ useHandCursor: true });
-
-        bg.on('pointerover', () => { bg.setFillStyle(0x362714, 0.95); txt.setStyle({ fill: '#ffe57f' }); });
-        bg.on('pointerout', () => { bg.setFillStyle(0x1a120a, 0.88); txt.setStyle({ fill: '#ffffff' }); });
-        bg.on('pointerdown', () => this.scene.start('MenuScene'));
+        backBtn.on('pointerover', () => backBtn.setStyle({ fill: '#ffe57f', backgroundColor: '#543e20' }));
+        backBtn.on('pointerout', () => backBtn.setStyle({ fill: '#ffffff', backgroundColor: '#362714' }));
+        backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
     }
 }
 
 // -------------------------------------------------------------------
-// 4. LEVEL SELECT SCENE
+// 4. СЦЕНА: ВИБІР РІВНЯ
 // -------------------------------------------------------------------
 class LevelSelectScene extends Phaser.Scene {
     constructor() {
         super({ key: 'LevelSelectScene' });
-        this.currentSelectedLevel = 1;
-        this.maxLevels = 4;
     }
 
     create() {
@@ -519,118 +464,73 @@ class LevelSelectScene extends Phaser.Scene {
             this.add.rectangle(640, 360, 1280, 720, 0x3d301c);
         }
 
+        createGrainTexture(this);
         let grain = this.add.tileSprite(640, 360, 1280, 720, 'grain_texture');
         grain.setAlpha(0.25);
 
-        this.add.text(640, 120, 'ВИБІР РІВНЯ', {
+        this.add.text(644, 184, 'ВИБІР РІВНЯ', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '26px',
+            fontSize: '38px',
+            fill: '#000000',
+            align: 'center'
+        }).setOrigin(0.5).setAlpha(0.7);
+
+        this.add.text(640, 180, 'ВИБІР РІВНЯ', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '38px',
             fill: '#ffe57f',
-            stroke: '#000000',
-            strokeThickness: 6
+            stroke: '#140c03',
+            strokeThickness: 10,
+            align: 'center'
         }).setOrigin(0.5);
 
-        // Центральна плашка у співвідношенні 1:1 відносно вмісту
-        createPixelBox(this, 640, 360, 380, 280);
+        this.createPixelMenuButton(640, 340, '1 РІВЕНЬ', () => {
+            stopMenuMusic(this);
+            this.scene.start('GameScene');
+        }, 280);
 
-        this.levelTitleText = this.add.text(640, 275, '', {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: '20px',
-            fill: '#ffffff'
-        }).setOrigin(0.5);
+        this.createPixelMenuButton(640, 430, 'НАЗАД В МЕНЮ', () => {
+            this.scene.start('MenuScene');
+        }, 280);
+    }
 
-        this.levelDescText = this.add.text(640, 335, '', {
+    createPixelMenuButton(x, y, textLabel, callback, width = 280) {
+        let btnHeight = 54;
+
+        let container = this.add.container(x, y);
+
+        let bgOuter = this.add.rectangle(0, 0, width, btnHeight, 0x120d07).setStrokeStyle(4, 0x8c6f3e);
+        let bgInner = this.add.rectangle(0, 0, width - 8, btnHeight - 8, 0x362714);
+
+        let label = this.add.text(0, 0, textLabel, {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '12px',
+            fontSize: '14px',
             fill: '#e6ca94',
             align: 'center'
         }).setOrigin(0.5);
 
-        // Кнопка Старт
-        this.startLevelContainer = this.add.container(640, 420);
-        let sBorder = this.add.rectangle(0, 0, 180, 44, 0x000000);
-        let sBg = this.add.rectangle(0, 0, 174, 38, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
-        let sTxt = this.add.text(0, 0, 'ПОЧАТИ', {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '14px', fill: '#ffffff'
-        }).setOrigin(0.5);
+        container.add([bgOuter, bgInner, label]);
 
-        this.startLevelContainer.add([sBorder, sBg, sTxt]);
-        sBg.setInteractive({ useHandCursor: true });
+        bgInner.setInteractive({ useHandCursor: true });
 
-        sBg.on('pointerover', () => { sBg.setFillStyle(0x362714, 0.95); sTxt.setStyle({ fill: '#ffe57f' }); });
-        sBg.on('pointerout', () => { sBg.setFillStyle(0x1a120a, 0.88); sTxt.setStyle({ fill: '#ffffff' }); });
-        sBg.on('pointerdown', () => {
-            if (this.currentSelectedLevel === 1) {
-                stopMenuMusic(this);
-                this.scene.start('GameScene');
-            }
+        bgInner.on('pointerover', () => {
+            bgOuter.setStrokeStyle(4, 0xffe57f);
+            bgInner.setFillStyle(0x543e20);
+            label.setStyle({ fill: '#ffffff' });
         });
 
-        // Строго КВАДРАТНІ СТРІЛКИ (Співвідношення 1:1, 64x64px)
-        this.createSquarePixelArrow(370, 360, '◄', () => {
-            if (this.currentSelectedLevel > 1) {
-                this.currentSelectedLevel--;
-                this.updateLevelDisplay();
-            }
+        bgInner.on('pointerout', () => {
+            bgOuter.setStrokeStyle(4, 0x8c6f3e);
+            bgInner.setFillStyle(0x362714);
+            label.setStyle({ fill: '#e6ca94' });
         });
 
-        this.createSquarePixelArrow(910, 360, '►', () => {
-            if (this.currentSelectedLevel < this.maxLevels) {
-                this.currentSelectedLevel++;
-                this.updateLevelDisplay();
-            }
-        });
-
-        // Кнопка Назад
-        let backContainer = this.add.container(640, 560);
-        let bBorder = this.add.rectangle(0, 0, 260, 40, 0x000000);
-        let bBg = this.add.rectangle(0, 0, 254, 34, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
-        let bTxt = this.add.text(0, 0, 'ГОЛОВНЕ МЕНЮ', {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '12px', fill: '#cccccc'
-        }).setOrigin(0.5);
-
-        backContainer.add([bBorder, bBg, bTxt]);
-        bBg.setInteractive({ useHandCursor: true });
-
-        bBg.on('pointerover', () => { bBg.setFillStyle(0x362714, 0.95); bTxt.setStyle({ fill: '#ffffff' }); });
-        bBg.on('pointerout', () => { bBg.setFillStyle(0x1a120a, 0.88); bTxt.setStyle({ fill: '#cccccc' }); });
-        bBg.on('pointerdown', () => this.scene.start('MenuScene'));
-
-        this.updateLevelDisplay();
-    }
-
-    createSquarePixelArrow(x, y, symbol, callback) {
-        let container = this.add.container(x, y);
-        // Квадратний контур 64x64px (1:1)
-        let border = this.add.rectangle(0, 0, 64, 64, 0x000000);
-        let bg = this.add.rectangle(0, 0, 56, 56, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
-        let txt = this.add.text(0, 0, symbol, {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '26px', fill: '#ffe57f'
-        }).setOrigin(0.5);
-
-        container.add([border, bg, txt]);
-        bg.setInteractive({ useHandCursor: true });
-
-        bg.on('pointerover', () => { bg.setFillStyle(0x362714, 0.95); bg.setStrokeStyle(2, 0xffe57f); });
-        bg.on('pointerout', () => { bg.setFillStyle(0x1a120a, 0.88); bg.setStrokeStyle(2, 0x8c6f3e); });
-        bg.on('pointerdown', callback);
-    }
-
-    updateLevelDisplay() {
-        if (this.currentSelectedLevel === 1) {
-            this.levelTitleText.setText('1 РІВЕНЬ');
-            this.levelDescText.setText('ОБОРОНА ВЕЖІ\n\nЗахистіть рубежі!');
-            this.startLevelContainer.setVisible(true);
-        } else {
-            this.levelTitleText.setText(`${this.currentSelectedLevel} РІВЕНЬ`);
-            this.levelDescText.setText('ЗАБЛОКОВАНО\n\nПройдіть попередні рівні');
-            this.startLevelContainer.setVisible(false);
-        }
+        bgInner.on('pointerdown', callback);
     }
 }
 
 // -------------------------------------------------------------------
-// 5. GAME SCENE
+// 5. ОСНОВНА СЦЕНА ГРИ
 // -------------------------------------------------------------------
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -644,45 +544,49 @@ class GameScene extends Phaser.Scene {
         this.isWin = false;
         this.isPaused = false;
         this.score = 0;
-        this.targetScore = 1488;
         this.lives = 5;
         this.hearts = [];
         
         this.lastFired = 0;
-        this.fireRateDelay = 380;
-        this.lastTargetX = -1;
-        this.lastTargetY = -1;
-        this.samePointHits = 0;
-
+        this.fireRateDelay = 350; 
         this.elapsedSeconds = 0;
+
         this.currentTrack = null;
         this.specialTrack = null;
-        this.totalKills = 0;
+        this.winTimerEvent = null;
+        this.isFirstTrack = true;
 
         this.input.mouse.disableContextMenu();
 
         let bg = this.add.image(640, 360, 'background');
-        bg.setDisplaySize(1280, 720).setDepth(0);
+        bg.setDisplaySize(1280, 720);
+        bg.setDepth(0);
 
-        this.patron = this.add.image(170, 230, 'patron').setOrigin(0.5, 0.5).setScale(0.3).setDepth(1);
-        this.patron.rotation = 0.2;
+        this.patron = this.add.image(170, 230, 'patron').setOrigin(0.5, 0.5);
+        this.patron.setScale(0.3);
+        this.patron.setDepth(1);
+        this.patron.rotation = 0;
 
-        let tower = this.add.image(144, 580, 'tower').setOrigin(0.5, 1).setScale(0.24).setDepth(10);
+        let tower = this.add.image(144, 580, 'tower');
+        tower.setOrigin(0.5, 1);
+        tower.setScale(0.24);
+        tower.setDepth(10);
 
         this.arrows = this.physics.add.group();
         this.zombies = this.physics.add.group();
+        this.apples = this.add.group();
 
-        this.pigSound = this.sound.add('pig_sound', { volume: 0.05, rate: 1.0 });
+        this.pigSound = this.sound.add('pig_sound', { volume: 0.12 });
 
-        this.scoreText = this.add.text(30, 30, `Очки: 0 / ${this.targetScore}`, { 
+        this.scoreText = this.add.text(40, 40, 'Очки: 0 / 1488', { 
             fontFamily: '"Press Start 2P", monospace', 
-            fontSize: '16px', 
+            fontSize: '20px', 
             fill: '#ffffff' 
         }).setDepth(100);
 
-        this.timerText = this.add.text(30, 60, 'Час: 00:00', {
+        this.timerText = this.add.text(40, 70, 'Час: 00:00', {
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '14px',
+            fontSize: '16px',
             fill: '#ffe57f'
         }).setDepth(100);
 
@@ -692,10 +596,6 @@ class GameScene extends Phaser.Scene {
                 if (!this.isPaused && !this.isGameOver && !this.isWin) {
                     this.elapsedSeconds++;
                     this.timerText.setText('Час: ' + formatTime(this.elapsedSeconds));
-
-                    if (this.elapsedSeconds === 30 && this.lives === 5) {
-                        showAchievement(this, 'Сталеві нерви', '30 сек без втрати життів!');
-                    }
                 }
             },
             callbackScope: this,
@@ -703,76 +603,146 @@ class GameScene extends Phaser.Scene {
         });
 
         for (let i = 0; i < 5; i++) {
-            let heart = this.add.image(1280 - 45 - (i * 45), 40, 'heart').setScale(0.13).setDepth(100);
+            let heart = this.add.image(1280 - 60 - (i * 65), 55, 'heart');
+            heart.setScale(0.16); 
+            heart.setDepth(100);
             this.hearts.push(heart);
         }
 
-        if (this.textures.exists('btn_pause')) {
-            this.hudPauseBtn = this.add.image(50, 100, 'btn_pause').setDisplaySize(36, 36).setDepth(100).setInteractive({ useHandCursor: true });
+        let pauseKey = this.textures.exists('btn_pause') ? 'btn_pause' : null;
+        let soundOnKey = this.textures.exists('btn_sound_on') ? 'btn_sound_on' : null;
+        let soundOffKey = this.textures.exists('btn_sound_off') ? 'btn_sound_off' : null;
+        let backKey = this.textures.exists('btn_back') ? 'btn_back' : null;
+
+        if (pauseKey) {
+            this.hudPauseBtn = this.add.image(50, 115, 'btn_pause').setDepth(100).setInteractive({ useHandCursor: true });
+            this.hudPauseBtn.setDisplaySize(40, 40);
         } else {
-            this.hudPauseBtn = this.add.text(30, 95, '[ II ]', { fontFamily: '"Press Start 2P"', fontSize: '14px', fill: '#fff', backgroundColor: '#000', padding: {x:6, y:4} }).setDepth(100).setInteractive({ useHandCursor: true });
+            this.hudPauseBtn = this.add.text(40, 105, '[ II ]', { fontFamily: '"Press Start 2P"', fontSize: '18px', fill: '#fff', backgroundColor: '#000', padding: {x:8, y:5} }).setDepth(100).setInteractive({ useHandCursor: true });
         }
-        this.hudPauseBtn.on('pointerdown', (p, x, y, e) => { if (e) e.stopPropagation(); this.togglePause(); });
+        this.hudPauseBtn.on('pointerdown', (p, x, y, e) => { e.stopPropagation(); this.togglePause(); });
 
-        this.updateHudSoundButton();
-
-        if (this.textures.exists('btn_back')) {
-            this.hudBackBtn = this.add.image(150, 100, 'btn_back').setDisplaySize(36, 36).setDepth(100).setInteractive({ useHandCursor: true });
+        let currentSoundTexture = this.sound.mute ? soundOffKey : soundOnKey;
+        if (currentSoundTexture) {
+            this.hudSoundBtn = this.add.image(105, 115, currentSoundTexture).setDepth(100).setInteractive({ useHandCursor: true });
+            this.hudSoundBtn.setDisplaySize(40, 40);
         } else {
-            this.hudBackBtn = this.add.text(170, 95, '[ ↩ ]', { fontFamily: '"Press Start 2P"', fontSize: '14px', fill: '#fff', backgroundColor: '#000', padding: {x:6, y:4} }).setDepth(100).setInteractive({ useHandCursor: true });
+            this.hudSoundBtn = this.add.text(125, 105, this.sound.mute ? '[ 🔇 ]' : '[ 🔊 ]', { fontFamily: '"Press Start 2P"', fontSize: '18px', fill: '#fff', backgroundColor: '#000', padding: {x:8, y:5} }).setDepth(100).setInteractive({ useHandCursor: true });
         }
-        this.hudBackBtn.on('pointerdown', (p, x, y, e) => { if (e) e.stopPropagation(); this.showExitConfirmModal(); });
+        this.hudSoundBtn.on('pointerdown', (p, x, y, e) => { e.stopPropagation(); this.toggleSound(); });
 
-        // Пауза
-        let pauseOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.75).setInteractive();
-        let pauseBox = createPixelBox(this, 640, 360, 500, 280);
+        if (backKey) {
+            this.hudBackBtn = this.add.image(160, 115, 'btn_back').setDepth(100).setInteractive({ useHandCursor: true });
+            this.hudBackBtn.setDisplaySize(40, 40);
+        } else {
+            this.hudBackBtn = this.add.text(210, 105, '[ ↩ ]', { fontFamily: '"Press Start 2P"', fontSize: '18px', fill: '#fff', backgroundColor: '#000', padding: {x:8, y:5} }).setDepth(100).setInteractive({ useHandCursor: true });
+        }
+        this.hudBackBtn.on('pointerdown', (p, x, y, e) => { e.stopPropagation(); this.showExitConfirmModal(); });
+
+        let pauseOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65).setInteractive();
         let pauseText = this.add.text(640, 260, 'ПАУЗА', {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '22px', fill: '#ffffff'
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '44px',
+            fill: '#ffffff'
         }).setOrigin(0.5);
 
-        this.createPauseSoundControl(640, 335);
+        let soundStatusText = this.sound.mute ? 'ЗВУК: ВИМК' : 'ЗВУК: УВІМК';
+        this.muteBtn = this.add.text(640, 360, soundStatusText, {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '22px',
+            fill: '#ffcc00',
+            backgroundColor: '#222222',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-        let pauseSubText = this.add.text(640, 420, 'Натисніть SPACE або ESC', {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '11px', fill: '#cccccc'
+        this.muteBtn.on('pointerdown', (p, x, y, e) => {
+            if (e) e.stopPropagation();
+            this.toggleSound();
+        });
+
+        let isTouchDevice = this.sys.game.device.input.touch;
+        let hintMsg = isTouchDevice 
+            ? 'Натисніть на екран або [ II ] для продовження' 
+            : 'Натисніть SPACE, ESC або [ II ] для продовження';
+
+        let pauseSubText = this.add.text(640, 450, hintMsg, {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '15px',
+            fill: '#cccccc',
+            align: 'center'
         }).setOrigin(0.5);
 
-        this.pauseGroup = this.add.group([pauseOverlay, pauseBox, pauseText, pauseSubText]).setDepth(999);
+        pauseOverlay.on('pointerdown', () => {
+            if (this.isPaused && !this.exitModalGroup.visible) {
+                this.togglePause();
+            }
+        });
+
+        this.pauseGroup = this.add.group([pauseOverlay, pauseText, this.muteBtn, pauseSubText]);
+        this.pauseGroup.setDepth(999);
         this.pauseGroup.setVisible(false);
 
-        // Модалка виходу
-        let exitOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.8).setInteractive();
-        let exitBox = createPixelBox(this, 640, 360, 480, 220);
-        let exitQuestion = this.add.text(640, 300, 'Вийти в меню?', {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '16px', fill: '#ffffff'
+        let exitOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.75).setInteractive();
+        let exitQuestion = this.add.text(640, 280, 'Ви точно хочете вийти в меню?', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '22px',
+            fill: '#ffffff',
+            align: 'center'
         }).setOrigin(0.5);
 
-        let yesBtnContainer = this.add.container(540, 380);
-        let yBorder = this.add.rectangle(0, 0, 110, 40, 0x000000);
-        let yBg = this.add.rectangle(0, 0, 104, 34, 0x882222).setStrokeStyle(2, 0xff6666);
-        let yTxt = this.add.text(0, 0, 'ТАК', { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#fff' }).setOrigin(0.5);
-        yesBtnContainer.add([yBorder, yBg, yTxt]);
-        yBg.setInteractive({ useHandCursor: true });
-        yBg.on('pointerdown', () => { this.stopAllMusic(); this.scene.start('MenuScene'); });
+        let yesBtn = this.add.text(500, 400, 'ТАК', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '24px',
+            fill: '#ffffff',
+            backgroundColor: '#882222',
+            padding: { x: 25, y: 12 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-        let noBtnContainer = this.add.container(740, 380);
-        let nBorder = this.add.rectangle(0, 0, 110, 40, 0x000000);
-        let nBg = this.add.rectangle(0, 0, 104, 34, 0x228822).setStrokeStyle(2, 0x66ff66);
-        let nTxt = this.add.text(0, 0, 'НІ', { fontFamily: '"Press Start 2P"', fontSize: '12px', fill: '#fff' }).setOrigin(0.5);
-        noBtnContainer.add([nBorder, nBg, nTxt]);
-        nBg.setInteractive({ useHandCursor: true });
-        nBg.on('pointerdown', () => this.hideExitConfirmModal());
+        let noBtn = this.add.text(780, 400, 'НІ', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '24px',
+            fill: '#ffffff',
+            backgroundColor: '#228822',
+            padding: { x: 25, y: 12 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-        this.exitModalGroup = this.add.group([exitOverlay, exitBox, exitQuestion, yesBtnContainer, noBtnContainer]).setDepth(1000);
+        yesBtn.on('pointerover', () => yesBtn.setStyle({ fill: '#ffcc00' }));
+        yesBtn.on('pointerout', () => yesBtn.setStyle({ fill: '#ffffff' }));
+        yesBtn.on('pointerdown', (p, x, y, e) => {
+            e.stopPropagation();
+            this.stopAllMusic();
+            this.scene.start('MenuScene');
+        });
+
+        noBtn.on('pointerover', () => noBtn.setStyle({ fill: '#ffcc00' }));
+        noBtn.on('pointerout', () => noBtn.setStyle({ fill: '#ffffff' }));
+        noBtn.on('pointerdown', (p, x, y, e) => {
+            e.stopPropagation();
+            this.hideExitConfirmModal();
+        });
+
+        this.exitModalGroup = this.add.group([exitOverlay, exitQuestion, yesBtn, noBtn]);
+        this.exitModalGroup.setDepth(1000);
         this.exitModalGroup.setVisible(false);
 
         this.tracksList = ['music_main', 'stefania', 'donbass', 'sorry', 'wagners'];
-        this.playRandomTrack();
+        this.playNextTrack();
+
+        this.input.on('pointerdown', (pointer) => {
+            if (this.isGameOver || this.isWin || this.isPaused) return;
+
+            let now = this.time.now;
+            if (now - this.lastFired >= this.fireRateDelay) {
+                this.shootArrow(pointer);
+                this.lastFired = now;
+            }
+        });
 
         this.input.keyboard.on('keydown-SPACE', this.togglePause, this);
         this.input.keyboard.on('keydown-ESC', this.togglePause, this);
 
         this.zombieSpawnTimer = this.time.addEvent({
-            delay: 650,
+            delay: 900,
             callback: this.spawnZombie,
             callbackScope: this,
             loop: true
@@ -781,117 +751,77 @@ class GameScene extends Phaser.Scene {
         this.physics.add.overlap(this.arrows, this.zombies, this.hitZombie, null, this);
     }
 
-    updateHudSoundButton() {
-        if (this.hudSoundBtn) this.hudSoundBtn.destroy();
-
-        let soundTexture = this.sound.mute ? 'btn_sound_off' : 'btn_sound_on';
-        if (this.textures.exists(soundTexture)) {
-            this.hudSoundBtn = this.add.image(100, 100, soundTexture).setDisplaySize(36, 36).setDepth(100).setInteractive({ useHandCursor: true });
-        } else {
-            this.hudSoundBtn = this.add.text(100, 95, this.sound.mute ? '[ 🔇 ]' : '[ 🔊 ]', {
-                fontFamily: '"Press Start 2P"', fontSize: '14px', fill: '#fff', backgroundColor: '#000', padding: {x:6, y:4}
-            }).setDepth(100).setInteractive({ useHandCursor: true });
-        }
-        this.hudSoundBtn.on('pointerdown', (p, x, y, e) => { if (e) e.stopPropagation(); this.toggleSound(); });
-    }
-
-    createPauseSoundControl(x, y) {
-        if (this.pauseSoundContainer) this.pauseSoundContainer.destroy();
-
-        this.pauseSoundContainer = this.add.container(x, y).setDepth(1000);
-        let soundTexture = this.sound.mute ? 'btn_sound_off' : 'btn_sound_on';
-
-        if (this.textures.exists(soundTexture)) {
-            let img = this.add.image(0, 0, soundTexture).setDisplaySize(44, 44).setInteractive({ useHandCursor: true });
-            let txt = this.add.text(0, 36, this.sound.mute ? 'ЗВУК: ВИМК' : 'ЗВУК: УВІМК', {
-                fontFamily: '"Press Start 2P", monospace', fontSize: '12px', fill: '#ffe57f'
-            }).setOrigin(0.5);
-            this.pauseSoundContainer.add([img, txt]);
-
-            img.on('pointerdown', (p, x, y, e) => { if (e) e.stopPropagation(); this.toggleSound(); });
-        } else {
-            let btn = this.add.text(0, 0, this.sound.mute ? 'ЗВУК: ВИМК' : 'ЗВУК: УВІМК', {
-                fontFamily: '"Press Start 2P", monospace', fontSize: '14px', fill: '#ffe57f', backgroundColor: '#222222', padding: { x: 12, y: 6 }
-            }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-            this.pauseSoundContainer.add(btn);
-
-            btn.on('pointerdown', (p, x, y, e) => { if (e) e.stopPropagation(); this.toggleSound(); });
-        }
-        this.pauseSoundContainer.setVisible(false);
-    }
-
     update() {
         if (this.isGameOver || this.isWin || this.isPaused) return;
 
         let pointer = this.input.activePointer;
         if (pointer) {
-            let angle = Phaser.Math.Angle.Between(this.patron.x, this.patron.y, pointer.x, pointer.y);
-            this.patron.rotation = angle - 0.2;
-
-            if (pointer.isDown) {
-                let now = this.time.now;
-                if (now - this.lastFired >= this.fireRateDelay) {
-                    let dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.lastTargetX, this.lastTargetY);
-                    if (dist < 15) {
-                        this.samePointHits++;
-                    } else {
-                        this.samePointHits = 0;
-                    }
-
-                    this.lastTargetX = pointer.x;
-                    this.lastTargetY = pointer.y;
-
-                    if (this.samePointHits < 5) {
-                        this.shootArrow(pointer);
-                        this.lastFired = now;
-                    }
-                }
-            }
+            let targetX = pointer.x || this.input.x;
+            let targetY = pointer.y || this.input.y;
+            let angle = Phaser.Math.Angle.Between(this.patron.x, this.patron.y, targetX, targetY);
+            this.patron.rotation = angle;
         }
 
         this.arrows.children.each((arrow) => {
-            if (arrow && arrow.active && (arrow.x > 1300 || arrow.y > 750 || arrow.y < -50)) {
-                arrow.destroy();
+            if (arrow && arrow.active) {
+                if (arrow.x > 1300 || arrow.y > 750 || arrow.y < -50 || arrow.x < -50) {
+                    arrow.destroy();
+                }
             }
         });
 
         this.zombies.children.each((zombie) => {
-            if (zombie && zombie.active && !zombie.isDying) {
-                zombie.y += Math.sin((this.time.now / 200) + zombie.x) * 0.4;
+            if (zombie && zombie.active && zombie.x < 165 && !zombie.isDying) {
+                zombie.isDying = true;
+                zombie.setVelocityX(0);
+                
+                this.takeDamage();
 
-                if (zombie.x < 165) {
-                    zombie.isDying = true;
-                    zombie.setVelocityX(0);
-                    this.takeDamage();
-
-                    this.tweens.add({
-                        targets: zombie, scaleX: 0, scaleY: 0, alpha: 0, duration: 300,
-                        onComplete: () => zombie.destroy()
-                    });
-                }
+                this.tweens.add({
+                    targets: zombie,
+                    scaleX: 0,
+                    scaleY: 0,
+                    alpha: 0,
+                    duration: 400,
+                    onComplete: () => {
+                        zombie.destroy();
+                    }
+                });
             }
         });
     }
 
     showExitConfirmModal() {
         if (this.isGameOver || this.isWin) return;
-        if (!this.isPaused) this.togglePause();
+        if (!this.isPaused) {
+            this.togglePause();
+        }
         this.pauseGroup.setVisible(false);
-        if (this.pauseSoundContainer) this.pauseSoundContainer.setVisible(false);
         this.exitModalGroup.setVisible(true);
     }
 
     hideExitConfirmModal() {
         this.exitModalGroup.setVisible(false);
-        if (this.isPaused) this.togglePause();
+        if (this.isPaused) {
+            this.togglePause();
+        }
     }
 
     toggleSound() {
         this.sound.mute = !this.sound.mute;
-        this.updateHudSoundButton();
-        this.createPauseSoundControl(640, 335);
-        if (this.isPaused && this.pauseSoundContainer) {
-            this.pauseSoundContainer.setVisible(true);
+        
+        let soundOnKey = this.textures.exists('btn_sound_on') ? 'btn_sound_on' : null;
+        let soundOffKey = this.textures.exists('btn_sound_off') ? 'btn_sound_off' : null;
+
+        if (this.hudSoundBtn) {
+            if (this.hudSoundBtn.setTexture) {
+                this.hudSoundBtn.setTexture(this.sound.mute ? soundOffKey : soundOnKey);
+            } else {
+                this.hudSoundBtn.setText(this.sound.mute ? '[ 🔇 ]' : '[ 🔊 ]');
+            }
+        }
+        if (this.muteBtn) {
+            this.muteBtn.setText(this.sound.mute ? 'ЗВУК: ВИМК' : 'ЗВУК: УВІМК');
         }
     }
 
@@ -899,16 +829,16 @@ class GameScene extends Phaser.Scene {
         if (this.isGameOver || this.isWin) return;
 
         this.isPaused = !this.isPaused;
+
         if (this.isPaused) {
             this.physics.pause();
             this.zombieSpawnTimer.paused = true;
+            this.muteBtn.setText(this.sound.mute ? 'ЗВУК: ВИМК' : 'ЗВУК: УВІМК');
             this.pauseGroup.setVisible(true);
-            if (this.pauseSoundContainer) this.pauseSoundContainer.setVisible(true);
         } else {
             this.physics.resume();
             this.zombieSpawnTimer.paused = false;
             this.pauseGroup.setVisible(false);
-            if (this.pauseSoundContainer) this.pauseSoundContainer.setVisible(false);
             this.exitModalGroup.setVisible(false);
         }
     }
@@ -917,45 +847,71 @@ class GameScene extends Phaser.Scene {
         if (this.isGameOver || this.isWin) return;
 
         this.lives--;
-        if (this.hearts[this.lives]) this.hearts[this.lives].setVisible(false);
-        if (this.lives <= 0) this.triggerGameOver();
+        if (this.hearts[this.lives]) {
+            this.hearts[this.lives].setVisible(false);
+        }
+
+        if (this.lives <= 0) {
+            this.triggerGameOver();
+        }
     }
 
-    // Класичний оверлей та плашка результату (Повернено назад)
     triggerGameOver() {
         this.isGameOver = true;
+        
         if (this.zombieSpawnTimer) this.zombieSpawnTimer.remove();
         if (this.levelTimerEvent) this.levelTimerEvent.remove();
         this.physics.pause();
 
-        this.stopAllMusic();
-        this.specialTrack = this.sound.add('game_over', { volume: 0.5 });
+        if (this.currentTrack && this.currentTrack.isPlaying) {
+            this.currentTrack.pause();
+        }
+
+        this.specialTrack = this.sound.add('game_over', { volume: 0.7 });
         this.specialTrack.play();
 
-        let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.75).setDepth(1000);
-        let box = createPixelBox(this, 640, 360, 520, 280).setDepth(1000);
-
-        let title = this.add.text(640, 260, 'ГРУ ЗАКІНЧЕНО', {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '24px', fill: '#ff4444'
-        }).setOrigin(0.5).setDepth(1001);
-
-        let restartBtn = this.createResultButton(640, 340, 'ПОЧАТИ ЗНОВУ', () => {
-            this.stopAllMusic(); this.scene.restart();
+        this.specialTrack.once('complete', () => {
+            if (this.currentTrack && this.currentTrack.isPaused) {
+                this.currentTrack.resume();
+            }
         });
 
-        let menuBtn = this.createResultButton(640, 410, 'ПОВЕРНУТИСЯ В МЕНЮ', () => {
-            this.stopAllMusic(); this.scene.start('MenuScene');
+        let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65);
+        overlay.setDepth(1000);
+
+        this.add.text(640, 300, 'ГРУ ЗАКІНЧЕНО', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '44px',
+            fill: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5).setDepth(1001);
+
+        let restartText = this.add.text(640, 400, 'ПОЧАТИ ЗНОВУ', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '26px',
+            fill: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1001);
+
+        restartText.on('pointerover', () => restartText.setStyle({ fill: '#ffcc00' }));
+        restartText.on('pointerout', () => restartText.setStyle({ fill: '#ffffff' }));
+
+        restartText.on('pointerdown', () => {
+            this.stopAllMusic();
+            this.scene.restart();
         });
     }
 
     triggerWin() {
         this.isWin = true;
+
         let completionTime = this.elapsedSeconds;
         let bestTime = localStorage.getItem('patron_best_time');
 
         if (!bestTime || completionTime < parseFloat(bestTime)) {
             localStorage.setItem('patron_best_time', completionTime);
         }
+
         let wins = parseInt(localStorage.getItem('patron_wins_count') || 0) + 1;
         localStorage.setItem('patron_wins_count', wins);
 
@@ -963,95 +919,157 @@ class GameScene extends Phaser.Scene {
         if (this.levelTimerEvent) this.levelTimerEvent.remove();
         this.physics.pause();
 
-        this.stopAllMusic();
-        this.specialTrack = this.sound.add('invincible', { volume: 0.5 });
+        if (this.currentTrack && this.currentTrack.isPlaying) {
+            this.currentTrack.pause();
+        }
+
+        this.specialTrack = this.sound.add('invincible', { volume: 0.7 });
         this.specialTrack.play();
 
-        let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.75).setDepth(1000);
-        let box = createPixelBox(this, 640, 360, 560, 320).setDepth(1000);
-
-        let title = this.add.text(640, 240, 'ПЕРЕМОГА!', {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '24px', fill: '#ffe57f'
-        }).setOrigin(0.5).setDepth(1001);
-
-        let timeTxt = this.add.text(640, 290, `ЧАС: ${formatTime(completionTime)}`, {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '14px', fill: '#ffffff'
-        }).setOrigin(0.5).setDepth(1001);
-
-        let retryBtn = this.createResultButton(640, 350, 'ПОВТОРИТИ', () => {
-            this.stopAllMusic(); this.scene.restart();
+        this.specialTrack.once('complete', () => {
+            if (this.currentTrack && this.currentTrack.isPaused) {
+                this.currentTrack.resume();
+            }
         });
 
-        let menuBtn = this.createResultButton(640, 415, 'ПОВЕРНУТИСЯ В МЕНЮ', () => {
-            this.stopAllMusic(); this.scene.start('MenuScene');
+        let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.7);
+        overlay.setDepth(1000);
+
+        this.add.text(640, 210, 'ПЕРЕМОГА!', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '54px',
+            fill: '#ffcc00',
+            align: 'center'
+        }).setOrigin(0.5).setDepth(1001);
+
+        this.add.text(640, 290, `ЧАС ПРОХОДЖЕННЯ: ${formatTime(completionTime)}`, {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '20px',
+            fill: '#ffffff'
+        }).setOrigin(0.5).setDepth(1001);
+
+        let retryText = this.add.text(640, 390, 'ПОВТОРИТИ ЗНОВУ', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '24px',
+            fill: '#ffffff',
+            backgroundColor: '#4a3b22',
+            padding: { x: 20, y: 12 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(1001);
+
+        let countdown = 10;
+        let timerText = this.add.text(640, 480, `ПОВЕРНЕННЯ ДО МЕНЮ ЧЕРЕЗ: ${countdown}`, {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '18px',
+            fill: '#cccccc'
+        }).setOrigin(0.5).setDepth(1001);
+
+        this.winTimerEvent = this.time.addEvent({
+            delay: 1000,
+            callback: () => {
+                countdown--;
+                timerText.setText(`ПОВЕРНЕННЯ ДО МЕНЮ ЧЕРЕЗ: ${countdown}`);
+                if (countdown <= 0) {
+                    this.stopAllMusic();
+                    this.scene.start('MenuScene');
+                }
+            },
+            callbackScope: this,
+            loop: true
         });
-    }
 
-    createResultButton(x, y, text, callback) {
-        let container = this.add.container(x, y).setDepth(1001);
-        let border = this.add.rectangle(0, 0, 280, 42, 0x000000);
-        let bg = this.add.rectangle(0, 0, 274, 36, 0x1a120a, 0.88).setStrokeStyle(2, 0x8c6f3e);
-        let txt = this.add.text(0, 0, text, {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '12px', fill: '#ffe57f'
-        }).setOrigin(0.5);
+        retryText.on('pointerover', () => retryText.setStyle({ fill: '#ffcc00', backgroundColor: '#332714' }));
+        retryText.on('pointerout', () => retryText.setStyle({ fill: '#ffffff', backgroundColor: '#4a3b22' }));
 
-        container.add([border, bg, txt]);
-        bg.setInteractive({ useHandCursor: true });
-
-        bg.on('pointerover', () => { bg.setFillStyle(0x362714, 0.95); txt.setStyle({ fill: '#ffffff' }); });
-        bg.on('pointerout', () => { bg.setFillStyle(0x1a120a, 0.88); txt.setStyle({ fill: '#ffe57f' }); });
-        bg.on('pointerdown', callback);
-
-        return container;
+        retryText.on('pointerdown', () => {
+            if (this.winTimerEvent) this.winTimerEvent.remove();
+            this.stopAllMusic();
+            this.scene.restart();
+        });
     }
 
     stopAllMusic() {
-        if (this.currentTrack) { this.currentTrack.stop(); this.currentTrack.destroy(); this.currentTrack = null; }
-        if (this.specialTrack) { this.specialTrack.stop(); this.specialTrack.destroy(); this.specialTrack = null; }
+        if (this.currentTrack) {
+            this.currentTrack.stop();
+            this.currentTrack.destroy();
+            this.currentTrack = null;
+        }
+        if (this.specialTrack) {
+            this.specialTrack.stop();
+            this.specialTrack.destroy();
+            this.specialTrack = null;
+        }
     }
 
-    playRandomTrack() {
-        let selectedKey = this.tracksList[Phaser.Math.Between(0, this.tracksList.length - 1)];
-        if (!this.cache.audio.exists(selectedKey)) selectedKey = 'music_main';
+    playNextTrack() {
+        let selectedKey = 'wagners';
 
-        this.currentTrack = this.sound.add(selectedKey, { volume: 0.35 });
+        if (this.isFirstTrack) {
+            selectedKey = 'wagners';
+            this.isFirstTrack = false;
+        } else {
+            let randomIndex = Phaser.Math.Between(0, this.tracksList.length - 1);
+            selectedKey = this.tracksList[randomIndex];
+        }
+
+        if (!this.cache.audio.exists(selectedKey)) {
+            selectedKey = 'music_main';
+        }
+
+        this.currentTrack = this.sound.add(selectedKey, { volume: 0.5 });
+
         this.currentTrack.once('complete', () => {
-            if (!this.isGameOver && !this.isWin) this.playRandomTrack();
+            if (!this.isGameOver && !this.isWin) {
+                this.playNextTrack();
+            }
         });
+
         this.currentTrack.play();
     }
 
     shootArrow(pointer) {
         let arrow = this.arrows.create(this.patron.x, this.patron.y, 'arrow');
-        arrow.setScale(0.11).setDepth(11);
+        arrow.setScale(0.12);
+        arrow.setDepth(11);
         
         let angle = Phaser.Math.Angle.Between(this.patron.x, this.patron.y, pointer.x, pointer.y);
         arrow.rotation = angle;
-        this.physics.velocityFromRotation(angle, 800, arrow.body.velocity);
+        
+        this.physics.velocityFromRotation(angle, 700, arrow.body.velocity);
     }
 
     spawnZombie() {
         if (this.isGameOver || this.isWin || this.isPaused) return;
 
-        let groundY = Phaser.Math.Between(520, 690);
-        let startX = Phaser.Math.Between(1310, 1380);
+        let groundY = Phaser.Math.Between(600, 690);
+        let startX = Phaser.Math.Between(1310, 1370);
 
         let zombie = this.zombies.create(startX, groundY, 'zombie');
-        zombie.setOrigin(0.5, 1).setDepth(Math.floor(groundY));
+        zombie.setOrigin(0.5, 1);
+        zombie.setDepth(Math.floor(groundY));
 
         let typeRoll = Phaser.Math.Between(1, 100);
         let speed, scale, hp, reward;
 
-        if (typeRoll <= 35) {
-            scale = 0.45; speed = Phaser.Math.Between(-280, -210); hp = 1; reward = 30;
-        } else if (typeRoll <= 55) {
-            scale = 0.85; speed = Phaser.Math.Between(-140, -100); hp = 2; reward = 80;
+        if (typeRoll <= 25) {
+            scale = 0.45;
+            speed = Phaser.Math.Between(-210, -160);
+            hp = 1;
+            reward = 30;
+        } else if (typeRoll <= 40) {
+            scale = 0.85;
+            speed = Phaser.Math.Between(-80, -50);
+            hp = 2;
+            reward = 100;
         } else {
-            scale = 0.65; speed = Phaser.Math.Between(-200, -150); hp = 1; reward = 40;
+            scale = 0.65;
+            speed = Phaser.Math.Between(-130, -90);
+            hp = 1;
+            reward = 30;
         }
 
         zombie.setScale(scale);
         zombie.setVelocityX(speed);
+        
         zombie.hp = hp;
         zombie.reward = reward;
     }
@@ -1059,36 +1077,55 @@ class GameScene extends Phaser.Scene {
     hitZombie(arrow, zombie) {
         if (arrow.active && zombie.active && !zombie.isDying) {
             arrow.destroy();
+
             zombie.hp -= 1;
 
             zombie.setTint(0xff0000);
-            this.time.delayedCall(70, () => { if (zombie && zombie.active) zombie.clearTint(); });
+            this.time.delayedCall(100, () => {
+                if (zombie && zombie.active) {
+                    zombie.clearTint();
+                }
+            });
 
             if (zombie.hp <= 0) {
                 let deathX = zombie.x;
-                let groundY = zombie.y - 10;
+                let startY = zombie.y - (zombie.height * zombie.scaleY * 0.5); 
+                let groundY = zombie.y - 10; 
+                let earnedPoints = zombie.reward || 30;
                 let currentDepth = zombie.depth;
 
                 zombie.destroy();
-                this.totalKills++;
 
-                if (this.totalKills === 1) showAchievement(this, 'Перша бавовна', 'Знищено першого ворога!');
-                if (this.totalKills === 15) showAchievement(this, 'Потужний удар', 'Знищено 15 ворогів!');
+                if (this.pigSound) {
+                    this.pigSound.play();
+                }
 
-                if (this.pigSound) this.pigSound.play();
+                let apple = this.add.image(deathX, startY, 'apple');
+                apple.setScale(0.08);
+                apple.setDepth(currentDepth);
 
-                let apple = this.add.image(deathX, zombie.y - 30, 'apple').setScale(0.08).setDepth(currentDepth);
                 this.tweens.add({
-                    targets: apple, y: groundY, duration: 250, ease: 'Bounce.easeOut',
+                    targets: apple,
+                    y: groundY,
+                    duration: 400,
+                    ease: 'Bounce.easeOut',
                     onComplete: () => {
-                        this.tweens.add({ targets: apple, alpha: 0, duration: 500, delay: 200, onComplete: () => apple.destroy() });
+                        this.tweens.add({
+                            targets: apple,
+                            alpha: 0,
+                            duration: 1000,
+                            delay: 600,
+                            onComplete: () => {
+                                apple.destroy();
+                            }
+                        });
                     }
                 });
                 
-                this.score += zombie.reward || 30;
-                this.scoreText.setText(`Очки: ${this.score} / ${this.targetScore}`);
+                this.score += earnedPoints;
+                this.scoreText.setText('Очки: ' + this.score + ' / 1488');
 
-                if (this.score >= this.targetScore && !this.isWin) {
+                if (this.score >= 1488 && !this.isWin) {
                     this.triggerWin();
                 }
             }
