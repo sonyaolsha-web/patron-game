@@ -58,8 +58,30 @@ function playMenuMusic(scene) {
     if (!scene.game.menuMusic) {
         scene.game.menuMusic = scene.sound.add('menu_music', { volume: 0.5, loop: true });
     }
-    if (!scene.game.menuMusic.isPlaying && !scene.sound.locked) {
-        scene.game.menuMusic.play();
+    
+    if (!scene.game.menuMusic.isPlaying) {
+        if (!scene.sound.locked) {
+            scene.game.menuMusic.play();
+        } else {
+            // Якщо браузер заблокував звук, вмикаємо його при першому ж русі миші/дотику
+            let unlockAudio = () => {
+                if (scene.sound.locked) {
+                    scene.sound.unlock();
+                }
+                if (scene.game.menuMusic && !scene.game.menuMusic.isPlaying) {
+                    scene.game.menuMusic.play();
+                }
+                window.removeEventListener('pointerdown', unlockAudio);
+                window.removeEventListener('mousemove', unlockAudio);
+                window.removeEventListener('touchstart', unlockAudio);
+                window.removeEventListener('keydown', unlockAudio);
+            };
+
+            window.addEventListener('pointerdown', unlockAudio, { once: true });
+            window.addEventListener('mousemove', unlockAudio, { once: true });
+            window.addEventListener('touchstart', unlockAudio, { once: true });
+            window.addEventListener('keydown', unlockAudio, { once: true });
+        }
     }
 }
 
@@ -184,24 +206,8 @@ class MenuScene extends Phaser.Scene {
             this.createPixelMenuButton(640, btnY, btnInfo.text, btnInfo.action);
         });
 
-        // Перевірка блокування звуку браузером при заході на сайт
-        if (this.sound.locked) {
-            let startOverlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.85).setDepth(2000).setInteractive();
-            let startText = this.add.text(640, 360, 'НАТИСНІТЬ БУДЬ-ДЕ, ЩОБ ПОЧАТИ ГРУ', {
-                fontFamily: '"Press Start 2P", monospace',
-                fontSize: '22px',
-                fill: '#ffe57f',
-                align: 'center'
-            }).setOrigin(0.5).setDepth(2001);
-
-            startOverlay.once('pointerdown', () => {
-                startOverlay.destroy();
-                startText.destroy();
-                playMenuMusic(this);
-            });
-        } else {
-            playMenuMusic(this);
-        }
+        // Запуск фонової музики меню
+        playMenuMusic(this);
     }
 
     createPixelMenuButton(x, y, textLabel, callback) {
@@ -509,7 +515,6 @@ class GameScene extends Phaser.Scene {
         this.hearts = [];
         
         this.lastFired = 0;
-        // Збільшено затримку пострілів до 350 мс для кращого контролю
         this.fireRateDelay = 350; 
         this.elapsedSeconds = 0;
 
