@@ -28,7 +28,6 @@ window.addEventListener('contextmenu', function (e) {
 
 function createGrainTexture(scene) {
     if (scene.textures.exists('grain_texture')) return;
-    
     let canvas = scene.textures.createCanvas('grain_texture', 256, 256);
     let ctx = canvas.context;
     let imgData = ctx.createImageData(256, 256);
@@ -489,7 +488,7 @@ class LevelSelectScene extends Phaser.Scene {
 
         this.createPixelMenuButton(640, 350, '2 РІВЕНЬ (ДРОНИ)', () => {
             stopMenuMusic(this);
-            this.scene.start('GameSceneLevel2');
+            this.scene.start('GameScene'); // тимчасово веде на GameScene, якщо немає другої
         }, 340);
 
         this.createPixelMenuButton(640, 460, 'НАЗАД В МЕНЮ', () => {
@@ -556,7 +555,6 @@ class GameScene extends Phaser.Scene {
         this.currentTrack = null;
         this.specialTrack = null;
         this.winTimerEvent = null;
-        this.isFirstTrack = true;
 
         this.input.mouse.disableContextMenu();
 
@@ -727,9 +725,6 @@ class GameScene extends Phaser.Scene {
         this.exitModalGroup.setDepth(1000);
         this.exitModalGroup.setVisible(false);
 
-        this.tracksList = ['music_main', 'stefania', 'donbass', 'sorry', 'wagners'];
-        this.playNextTrack();
-
         this.input.on('pointerdown', (pointer) => {
             if (this.isGameOver || this.isWin || this.isPaused) return;
 
@@ -831,6 +826,47 @@ class GameScene extends Phaser.Scene {
         }
     }
 
+    takeDamage() {
+        if (this.lives <= 0) return;
+        this.lives--;
+        if (this.hearts[this.lives]) {
+            this.hearts[this.lives].setVisible(false);
+        }
+
+        if (this.lives <= 0) {
+            this.triggerGameOver();
+        }
+    }
+
+    triggerGameOver() {
+        this.isGameOver = true;
+        this.physics.pause();
+        if (this.zombieSpawnTimer) this.zombieSpawnTimer.remove();
+        if (this.levelTimerEvent) this.levelTimerEvent.remove();
+
+        let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.7);
+        overlay.setDepth(1000);
+
+        this.add.text(640, 260, 'ПОРАЗКА!', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '48px',
+            fill: '#ff4444'
+        }).setOrigin(0.5).setDepth(1001);
+
+        let restartText = this.add.text(640, 380, 'СПРОБУВАТИ ЗНОВУ', {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '20px',
+            fill: '#ffffff',
+            backgroundColor: '#362714',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setDepth(1001).setInteractive({ useHandCursor: true });
+
+        restartText.on('pointerdown', () => {
+            this.stopAllMusic();
+            this.scene.restart();
+        });
+    }
+
     triggerWin() {
         this.isWin = true;
         this.physics.pause();
@@ -868,6 +904,19 @@ class GameScene extends Phaser.Scene {
         });
     }
 
+    togglePause() {
+        if (this.isGameOver || this.isWin) return;
+        this.isPaused = !this.isPaused;
+
+        if (this.isPaused) {
+            this.physics.pause();
+            this.pauseGroup.setVisible(true);
+        } else {
+            this.physics.resume();
+            this.pauseGroup.setVisible(false);
+        }
+    }
+
     showExitConfirmModal() {
         if (this.isGameOver || this.isWin) return;
         if (!this.isPaused) {
@@ -890,9 +939,9 @@ class GameScene extends Phaser.Scene {
         let soundOffKey = this.textures.exists('btn_sound_off') ? 'btn_sound_off' : null;
 
         if (this.hudSoundBtn) {
-            if (this.hudSoundBtn.setTexture) {
+            if (this.hudSoundBtn.setTexture && soundOnKey && soundOffKey) {
                 this.hudSoundBtn.setTexture(this.sound.mute ? soundOffKey : soundOnKey);
-            } else {
+            } else if (this.hudSoundBtn.setText) {
                 this.hudSoundBtn.setText(this.sound.mute ? '[ 🔇 ]' : '[ 🔊 ]');
             }
         }
@@ -901,135 +950,19 @@ class GameScene extends Phaser.Scene {
         }
     }
 
-    togglePause() {
-        if (this.isGameOver || this.isWin) return;
-
-        this.isPaused = !this.isPaused;
-
-        if (this.isPaused) {
-            this.physics.pause();
-            if (this.zombieSpawnTimer) this.zombieSpawnTimer.paused = true;
-            if (this.muteBtn) this.muteBtn.setText(this.sound.mute ? 'ЗВУК: ВИМК' : 'ЗВУК: УВІМК');
-            this.pauseGroup.setVisible(true);
-        } else {
-            this.physics.resume();
-            if (this.zombieSpawnTimer) this.zombieSpawnTimer.paused = false;
-            this.pauseGroup.setVisible(false);
-            this.exitModalGroup.setVisible(false);
-        }
-    }
-
-    takeDamage() {
-        if (this.isGameOver || this.isWin) return;
-
-        this.lives--;
-        if (this.hearts[this.lives]) {
-            this.hearts[this.lives].setVisible(false);
-        }
-
-        if (this.lives <= 0) {
-            this.triggerGameOver();
-        }
-    }
-
-    triggerGameOver() {
-        this.isGameOver = true;
-        
-        if (this.zombieSpawnTimer) this.zombieSpawnTimer.remove();
-        if (this.levelTimerEvent) this.levelTimerEvent.remove();
-        this.physics.pause();
-
-        if (this.currentTrack && this.currentTrack.isPlaying) {
-            this.currentTrack.pause();
-        }
-
-        this.specialTrack = this.sound.add('game_over', { volume: 0.7 });
-        this.specialTrack.play();
-
-        this.specialTrack.once('complete', () => {
-            if (this.currentTrack && this.currentTrack.isPaused) {
-                this.currentTrack.resume();
-            }
-        });
-
-        let overlay = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.65);
-        overlay.setDepth(1000);
-
-        this.add.text(640, 240, 'ГРУ ЗАКІНЧЕНО', {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: '44px',
-            fill: '#ffffff',
-            align: 'center'
-        }).setOrigin(0.5).setDepth(1001);
-
-        let restartText = this.add.text(640, 350, 'ПОЧАТИ ЗНОВУ', {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: '20px',
-            fill: '#ffffff',
-            backgroundColor: '#362714',
-            padding: { x: 20, y: 10 }
-        }).setOrigin(0.5).setDepth(1001).setInteractive({ useHandCursor: true });
-
-        restartText.on('pointerdown', () => {
-            this.stopAllMusic();
-            this.scene.restart();
-        });
-
-        let menuText = this.add.text(640, 430, 'В ГОЛОВНЕ МЕНЮ', {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: '20px',
-            fill: '#ffffff',
-            backgroundColor: '#362714',
-            padding: { x: 20, y: 10 }
-        }).setOrigin(0.5).setDepth(1001).setInteractive({ useHandCursor: true });
-
-        menuText.on('pointerdown', () => {
-            this.stopAllMusic();
-            this.scene.start('MenuScene');
-        });
-    }
-
-    playNextTrack() {
-        if (this.tracksList.length === 0) return;
-
-        let trackKey = this.tracksList.shift();
-        this.tracksList.push(trackKey);
-
-        this.currentTrack = this.sound.add(trackKey, { volume: 0.4 });
-        this.currentTrack.play();
-
-        this.currentTrack.once('complete', () => {
-            if (!this.isGameOver && !this.isWin) {
-                this.playNextTrack();
-            }
-        });
-    }
-
     stopAllMusic() {
-        if (this.currentTrack) this.currentTrack.stop();
-        if (this.specialTrack) this.specialTrack.stop();
-    }
-}
-
-// Заглушка для 2 рівня (щоб уникнути помилок переходу)
-class GameSceneLevel2 extends GameScene {
-    constructor() {
-        super({ key: 'GameSceneLevel2' });
+        if (this.currentTrack && this.currentTrack.isPlaying) this.currentTrack.stop();
+        if (this.specialTrack && this.specialTrack.isPlaying) this.specialTrack.stop();
     }
 }
 
 // -------------------------------------------------------------------
-// НАЛАШТУВАННЯ ТА ЗАПУСК ГРИ
+// 6. ІНІЦІАЛІЗАЦІЯ ГРИ
 // -------------------------------------------------------------------
 const config = {
     type: Phaser.AUTO,
     width: 1280,
     height: 720,
-    parent: 'game-container',
-    scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-    },
     physics: {
         default: 'arcade',
         arcade: {
@@ -1037,10 +970,11 @@ const config = {
             debug: false
         }
     },
-    scene: [PreloaderScene, MenuScene, SettingsScene, HighscoresScene, LevelSelectScene, GameScene, GameSceneLevel2]
+    scene: [PreloaderScene, MenuScene, SettingsScene, HighscoresScene, LevelSelectScene, GameScene]
 };
 
 const game = new Phaser.Game(config);
 </script>
+
 </body>
 </html>
